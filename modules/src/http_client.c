@@ -1,31 +1,32 @@
-#include "http_client.h"
 #include "error.h"
-#include "tcp_client.h"
+#include <maestromodules/http_client.h>
+#include <maestromodules/tcp_client.h>
 #include <stddef.h>
 
-void http_client_taskwork(void *_context, uint64_t _montime);
-HTTPClientState http_client_worktask_connecting(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_build_request(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_send_request(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_read_firstline(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_read_headers(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_read_body(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_returning(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client);
-HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client *_Client);
+void http_client_taskwork(void* _context, uint64_t _montime);
+HTTPClientState http_client_worktask_connecting(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_build_request(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_send_request(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_read_firstline(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_read_headers(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_read_body(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_returning(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client* _Client);
 
-int http_client_initiate(HTTP_Client *_Client, const char *_URL,
-                         HTTPMethod _method, http_client_on_success _on_success,
-                         void *_context, char **_response_out) {
+int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _method,
+                         http_client_on_success _on_success, void* _context, char** _response_out)
+{
+  (void)_method; // To be used with mbedtls
   if (!_Client) {
     return ERR_INVALID_ARG;
   }
-  HTTP_Request *req = calloc(1, sizeof(HTTP_Request));
+  HTTP_Request* req = calloc(1, sizeof(HTTP_Request));
   if (!req) {
     return ERR_NO_MEMORY;
   }
 
-  HTTP_Response *resp = calloc(1, sizeof(HTTP_Response));
+  HTTP_Response* resp = calloc(1, sizeof(HTTP_Response));
   if (!resp) {
     return ERR_NO_MEMORY;
   }
@@ -35,9 +36,9 @@ int http_client_initiate(HTTP_Client *_Client, const char *_URL,
     free(req);
     return ERR_BUSY;
   }
- // printf("URL in init: %s\n", _URL);
+  // printf("URL in init: %s\n", _URL);
 
-  char *url_copy = strdup(_URL);
+  char* url_copy = strdup(_URL);
   if (!url_copy) {
     scheduler_destroy_task(_Client->task);
     _Client->task = NULL;
@@ -69,24 +70,24 @@ int http_client_initiate(HTTP_Client *_Client, const char *_URL,
   return 0;
 }
 
-HTTPClientState http_client_worktask_connecting(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_connecting(HTTP_Client* _Client)
+{
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  http_parser_url(_Client->URL, (void *)&_Client->url_parts);
+  http_parser_url(_Client->URL, (void*)&_Client->url_parts);
 
   // printf("Scheme: %s\n", _Client->url_parts.scheme);
   // printf("Host: %s\n", _Client->url_parts.host);
   // printf("path: %s\n", _Client->url_parts.path);
   // printf("PorT: %s\n", _Client->url_parts.port);
- 
+
   if (_Client->tls == false) {
-    const char *PORT = "80";
+    const char* PORT = "80";
     // printf("URL: %s\n", _Client->url_parts.host);
     // printf("Pprt: %s\n", PORT);
-    int result =
-        tcp_client_init(&_Client->tcp_client, _Client->url_parts.host, PORT);
+    int result = tcp_client_init(&_Client->tcp_client, _Client->url_parts.host, PORT);
 
     if (result != SUCCESS) {
       printf("TCP_Client init failed\n");
@@ -102,12 +103,13 @@ HTTPClientState http_client_worktask_connecting(HTTP_Client *_Client) {
   return HTTP_CLIENT_BUILDING_REQUEST;
 }
 
-HTTPClientState http_client_worktask_build_request(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_build_request(HTTP_Client* _Client)
+{
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  const char *method_str = "GET";
+  const char* method_str = "GET";
 
   size_t base_len = 92;
   size_t max_len = strlen(_Client->URL) + base_len;
@@ -116,16 +118,14 @@ HTTPClientState http_client_worktask_build_request(HTTP_Client *_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  _Client->request_length =
-      snprintf((char *)_Client->request_buffer, max_len,
-               "%s %s HTTP/1.1\r\n"
-               "Host: %s\r\n"
-               "User-Agent: httpclient\r\n"
-               "Connection: close\r\n\r\n",
-               method_str, _Client->url_parts.path, _Client->url_parts.host);
+  _Client->request_length = snprintf((char*)_Client->request_buffer, max_len,
+                                     "%s %s HTTP/1.1\r\n"
+                                     "Host: %s\r\n"
+                                     "User-Agent: httpclient\r\n"
+                                     "Connection: close\r\n\r\n",
+                                     method_str, _Client->url_parts.path, _Client->url_parts.host);
 
-  if (_Client->request_length < 0 ||
-      (size_t)_Client->request_length >= max_len) {
+  if (_Client->request_length < 0 || (size_t)_Client->request_length >= max_len) {
     free(_Client->request_buffer);
     _Client->request_buffer = NULL;
     return HTTP_CLIENT_ERROR;
@@ -134,7 +134,8 @@ HTTPClientState http_client_worktask_build_request(HTTP_Client *_Client) {
   return HTTP_CLIENT_SENDING_REQUEST;
 }
 
-HTTPClientState http_client_worktask_send_request(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_send_request(HTTP_Client* _Client)
+{
 
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
@@ -143,9 +144,8 @@ HTTPClientState http_client_worktask_send_request(HTTP_Client *_Client) {
     size_t remaining = 0;
     remaining = _Client->request_length - _Client->bytes_sent;
 
-    int written = tcp_client_write_simple(
-        &_Client->tcp_client, _Client->request_buffer + _Client->bytes_sent,
-        remaining);
+    int written = tcp_client_write_simple(&_Client->tcp_client,
+                                          _Client->request_buffer + _Client->bytes_sent, remaining);
 
     if (written > 0) {
       _Client->bytes_sent += written;
@@ -185,12 +185,13 @@ HTTPClientState http_client_worktask_send_request(HTTP_Client *_Client) {
   return HTTP_CLIENT_READING_FIRSTLINE;
 }
 
-HTTPClientState http_client_worktask_read_firstline(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_read_firstline(HTTP_Client* _Client)
+{
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  TCP_Client *TCP_C = &_Client->tcp_client;
+  TCP_Client* TCP_C = &_Client->tcp_client;
 
   uint8_t tcp_buf[8096];
   int bytes_read = tcp_client_read_simple(TCP_C, tcp_buf, 8095);
@@ -207,8 +208,7 @@ HTTPClientState http_client_worktask_read_firstline(HTTP_Client *_Client) {
     printf("Connection closed by peer\n");
     return HTTP_CLIENT_ERROR;
   }
-  ssize_t bytes_stored =
-      tcp_client_realloc_data(&TCP_C->data, tcp_buf, (size_t)bytes_read);
+  ssize_t bytes_stored = tcp_client_realloc_data(&TCP_C->data, tcp_buf, (size_t)bytes_read);
 
   if (bytes_stored < 0) {
     return HTTP_CLIENT_ERROR;
@@ -238,8 +238,8 @@ HTTPClientState http_client_worktask_read_firstline(HTTP_Client *_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  if (http_parser_response_firstline((const char *)TCP_C->data.addr, line_len,
-                                     _Client->resp) != SUCCESS) {
+  if (http_parser_response_firstline((const char*)TCP_C->data.addr, line_len, _Client->resp) !=
+      SUCCESS) {
     /*Add internal error*/
     return HTTP_CLIENT_ERROR;
   }
@@ -255,8 +255,7 @@ HTTPClientState http_client_worktask_read_firstline(HTTP_Client *_Client) {
    * buffer*/
   if (TCP_C->data.size > parsed) {
 
-    memmove(TCP_C->data.addr, TCP_C->data.addr + parsed,
-            TCP_C->data.size - parsed);
+    memmove(TCP_C->data.addr, TCP_C->data.addr + parsed, TCP_C->data.size - parsed);
   }
 
   /*Remove first line by shrinking the buffer*/
@@ -265,12 +264,13 @@ HTTPClientState http_client_worktask_read_firstline(HTTP_Client *_Client) {
   return HTTP_CLIENT_READING_HEADERS;
 }
 
-HTTPClientState http_client_worktask_read_headers(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_read_headers(HTTP_Client* _Client)
+{
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  TCP_Client *TCP_C = &_Client->tcp_client;
+  TCP_Client* TCP_C = &_Client->tcp_client;
 
   uint8_t tcp_buf[1024];
   int bytes_read = tcp_client_read_simple(TCP_C, tcp_buf, 1024);
@@ -290,8 +290,7 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client *_Client) {
 
   if (bytes_read > 0) {
 
-    ssize_t bytes_stored =
-        tcp_client_realloc_data(&TCP_C->data, tcp_buf, (size_t)bytes_read);
+    ssize_t bytes_stored = tcp_client_realloc_data(&TCP_C->data, tcp_buf, (size_t)bytes_read);
 
     if (bytes_stored < 0) {
       return HTTP_CLIENT_ERROR;
@@ -304,8 +303,7 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client *_Client) {
   }
 
   /*Edgecase no headers*/
-  if (TCP_C->data.size >= 2 && TCP_C->data.addr[0] == '\r' &&
-      TCP_C->data.addr[1] == '\n') {
+  if (TCP_C->data.size >= 2 && TCP_C->data.addr[0] == '\r' && TCP_C->data.addr[1] == '\n') {
     if (TCP_C->data.size > 2) {
       memmove(TCP_C->data.addr, TCP_C->data.addr + 2, TCP_C->data.size - 2);
     }
@@ -322,8 +320,7 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client *_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  int headers_end =
-      http_parser_find_headers_end(TCP_C->data.addr, TCP_C->data.size);
+  int headers_end = http_parser_find_headers_end(TCP_C->data.addr, TCP_C->data.size);
 
   if (headers_end < 0) {
     /*Continue reading on next work call*/
@@ -336,27 +333,26 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client *_Client) {
   /*We have still parsed the full line including \r\n\r\n*/
   size_t parsed = (size_t)headers_end + 4;
 
-  if (http_parser_headers((const char *)TCP_C->data.addr, header_len,
-                          &_Client->req->headers) != SUCCESS) {
+  if (http_parser_headers((const char*)TCP_C->data.addr, header_len, &_Client->req->headers) !=
+      SUCCESS) {
     return HTTP_CLIENT_ERROR;
   }
 
   /*If there is data remaining its the body move it to start of buffer*/
   if (TCP_C->data.size > parsed) {
-    memmove(TCP_C->data.addr, TCP_C->data.addr + parsed,
-            TCP_C->data.size - parsed);
+    memmove(TCP_C->data.addr, TCP_C->data.addr + parsed, TCP_C->data.size - parsed);
   }
 
   TCP_C->data.size -= parsed;
   _Client->retries = 0;
 
   /*Check if there is a content-length (body) to read*/
-  const char *content_length_string = NULL;
-  int result = http_parser_get_header_value(
-      _Client->req->headers, "Content-Length", &content_length_string);
-  const char *transfer_encoding_string = NULL;
-  int res = http_parser_get_header_value(
-      _Client->req->headers, "Transfer-Encoding", &transfer_encoding_string);
+  const char* content_length_string = NULL;
+  int result =
+      http_parser_get_header_value(_Client->req->headers, "Content-Length", &content_length_string);
+  const char* transfer_encoding_string = NULL;
+  int res = http_parser_get_header_value(_Client->req->headers, "Transfer-Encoding",
+                                         &transfer_encoding_string);
 
   if (res == SUCCESS) {
     return HTTP_CLIENT_DECIPHER_CHONKINESS;
@@ -379,12 +375,13 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client *_Client) {
   return HTTP_CLIENT_RETURNING;
 }
 
-HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
+{
   if (_Client == NULL) {
     return HTTP_CLIENT_ERROR;
   }
 
-  TCP_Client *TCP_C = &_Client->tcp_client;
+  TCP_Client* TCP_C = &_Client->tcp_client;
 
   int line_end = http_parser_find_line_end(TCP_C->data.addr, TCP_C->data.size);
 
@@ -408,8 +405,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client) {
       return HTTP_CLIENT_ERROR;
     }
 
-    if (tcp_client_realloc_data(&TCP_C->data, buf,
-                                (size_t)additional_bytes_read) < 0) {
+    if (tcp_client_realloc_data(&TCP_C->data, buf, (size_t)additional_bytes_read) < 0) {
       return HTTP_CLIENT_ERROR;
     }
 
@@ -437,7 +433,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client) {
   memcpy(line, TCP_C->data.addr, parse_len);
   line[parse_len] = '\0';
 
-  char *endptr = NULL;
+  char* endptr = NULL;
   unsigned long long val = strtoull(line, &endptr, 16);
   if (endptr == line) {
     return HTTP_CLIENT_ERROR;
@@ -446,8 +442,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client) {
   chunk_size = (size_t)val;
 
   if (TCP_C->data.size > consume_len) {
-    memmove(TCP_C->data.addr, TCP_C->data.addr + consume_len,
-            TCP_C->data.size - consume_len);
+    memmove(TCP_C->data.addr, TCP_C->data.addr + consume_len, TCP_C->data.size - consume_len);
   }
 
   TCP_C->data.size -= consume_len;
@@ -457,8 +452,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client) {
   // Find trailing \r\n\r\n
   if (chunk_size == 0) {
     // No trailers just singe \r\n
-    if (TCP_C->data.size >= 2 && TCP_C->data.addr[0] == '\r' &&
-        TCP_C->data.addr[1] == '\n') {
+    if (TCP_C->data.size >= 2 && TCP_C->data.addr[0] == '\r' && TCP_C->data.addr[1] == '\n') {
 
       if (TCP_C->data.size > 2) {
 
@@ -470,8 +464,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client) {
     }
 
     // There are trailers
-    int traling_end =
-        http_parser_find_headers_end(TCP_C->data.addr, TCP_C->data.size);
+    int traling_end = http_parser_find_headers_end(TCP_C->data.addr, TCP_C->data.size);
     if (traling_end >= 0) {
       size_t trailers_consume = (size_t)traling_end + 4;
       if (TCP_C->data.size > trailers_consume) {
@@ -512,12 +505,13 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client *_Client) {
   return HTTP_CLIENT_READING_BODY_CHUNKED;
 }
 
-HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client* _Client)
+{
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
-  TCP_Client *TCP_C = &_Client->tcp_client;
+  TCP_Client* TCP_C = &_Client->tcp_client;
 
   // Do we need more data?
   if (TCP_C->data.size < (size_t)_Client->chunk_remaining) {
@@ -550,7 +544,7 @@ HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client *_Client) {
   size_t add_len = (size_t)_Client->chunk_remaining;
   size_t new_len = old_len + add_len;
 
-  uint8_t *newbuf = realloc(_Client->decoded_body, new_len + 1);
+  uint8_t* newbuf = realloc(_Client->decoded_body, new_len + 1);
   if (newbuf == NULL) {
     return HTTP_CLIENT_ERROR;
   }
@@ -605,13 +599,14 @@ HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client *_Client) {
   return HTTP_CLIENT_DECIPHER_CHONKINESS;
 }
 
-HTTPClientState http_client_worktask_read_body(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_read_body(HTTP_Client* _Client)
+{
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
   }
 
   unsigned int TCP_BUF_SIZE = 1024;
-  TCP_Client *TCP_C = &_Client->tcp_client;
+  TCP_Client* TCP_C = &_Client->tcp_client;
 
   uint8_t tcp_buf[TCP_BUF_SIZE];
 
@@ -635,8 +630,7 @@ HTTPClientState http_client_worktask_read_body(HTTP_Client *_Client) {
   if (bytes_read > 0) {
     _Client->chunked -= bytes_read;
     printf("Chunked read: %d\n\n", _Client->chunked);
-    ssize_t bytes_stored =
-        tcp_client_realloc_data(&TCP_C->data, tcp_buf, (size_t)bytes_read);
+    ssize_t bytes_stored = tcp_client_realloc_data(&TCP_C->data, tcp_buf, (size_t)bytes_read);
 
     if (bytes_stored < 0) {
       return HTTP_CLIENT_ERROR;
@@ -652,9 +646,10 @@ HTTPClientState http_client_worktask_read_body(HTTP_Client *_Client) {
   return HTTP_CLIENT_RETURNING;
 }
 
-HTTPClientState http_client_worktask_returning(HTTP_Client *_Client) {
+HTTPClientState http_client_worktask_returning(HTTP_Client* _Client)
+{
 
-  uint8_t *src = NULL;
+  uint8_t* src = NULL;
   size_t src_len = 0;
 
   if (_Client->decoded_body != NULL && _Client->decoded_body_len > 0) {
@@ -665,7 +660,7 @@ HTTPClientState http_client_worktask_returning(HTTP_Client *_Client) {
     src_len = _Client->tcp_client.data.size;
   }
 
-  char *response_out = malloc(src_len + 1);
+  char* response_out = malloc(src_len + 1);
   if (response_out == NULL) {
     perror("malloc");
     return HTTP_CLIENT_ERROR;
@@ -678,12 +673,13 @@ HTTPClientState http_client_worktask_returning(HTTP_Client *_Client) {
   return HTTP_CLIENT_DISPOSING;
 }
 
-void http_client_taskwork(void *_context, uint64_t _montime) {
+void http_client_taskwork(void* _context, uint64_t _montime)
+{
   if (!_context) {
     return;
   }
   (void)_montime;
-  HTTP_Client *client = (HTTP_Client *)_context;
+  HTTP_Client* client = (HTTP_Client*)_context;
 
   uint64_t now = SystemMonotonicMS();
 
@@ -767,14 +763,15 @@ void http_client_taskwork(void *_context, uint64_t _montime) {
   }
   }
 }
-void http_client_dispose(HTTP_Client *_Client) {
+void http_client_dispose(HTTP_Client* _Client)
+{
   if (!_Client)
     return;
 
   tcp_client_dispose(&_Client->tcp_client);
 
   if (_Client->URL != NULL) {
-    free((void *)_Client->URL);
+    free((void*)_Client->URL);
     _Client->URL = NULL;
   }
 

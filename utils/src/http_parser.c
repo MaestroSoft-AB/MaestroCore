@@ -1,6 +1,6 @@
-#include <maestroutils/http_client.h>
+#include <maestromodules/http_client.h>
+#include <maestromodules/linked_list.h>
 #include <maestroutils/http_parser.h>
-#include <maestroutils/linked_list.h>
 #include <stdio.h>
 
 void http_parser_dispose(HTTP_Request* _Req, HTTP_Response* _Resp);
@@ -351,6 +351,8 @@ int http_parser_headers(const char* _buf, size_t _buf_len, Linked_List** _header
 
 const char* http_build_full_response(int _status_code, const char* _headers, const char* _body)
 {
+  (void)_body;
+  (void)_headers;
   /* Build firstline */
   const char* reason_phrase = HttpStatus_reasonPhrase(_status_code);
   char firstline[128];

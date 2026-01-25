@@ -1,7 +1,5 @@
-#include "tcp_client.h"
-#include <asm-generic/errno.h>
-#include <error.h>
-#include <limits.h>
+#include <maestromodules/tcp_client.h>
+#include <maestroutils/error.h>
 #include <stdint.h>
 
 /*---------------------Internal functions------------------------------*/
@@ -9,7 +7,8 @@
 int tcp_client_set_nonblocking(int fd);
 
 /*---------------------------------------------------------------------*/
-int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port) {
+int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
+{
   if (!_Client || !_Host || !_Port) {
     return ERR_INVALID_ARG;
   }
@@ -21,8 +20,8 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port) {
 
   struct addrinfo addresses;
   memset(&addresses, 0, sizeof(addresses));
-  addresses.ai_family = AF_UNSPEC;      /* IPv4 & IPv6 */
-  addresses.ai_socktype = SOCK_STREAM;  /* TCP */
+  addresses.ai_family = AF_UNSPEC;     /* IPv4 & IPv6 */
+  addresses.ai_socktype = SOCK_STREAM; /* TCP */
   addresses.ai_protocol = IPPROTO_TCP;
 
   struct addrinfo* result = NULL;
@@ -34,9 +33,10 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port) {
 
   int fd = -1;
 
-  for (struct addrinfo *addr_info = result; addr_info; addr_info = addr_info->ai_next) {
+  for (struct addrinfo* addr_info = result; addr_info; addr_info = addr_info->ai_next) {
     fd = socket(addr_info->ai_family, addr_info->ai_socktype, addr_info->ai_protocol);
-    if (fd < 0) continue;
+    if (fd < 0)
+      continue;
 
     if (tcp_client_set_nonblocking(fd) != SUCCESS) {
       close(fd);
@@ -71,7 +71,8 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port) {
   return SUCCESS;
 }
 
-int tcp_client_init_ptr(TCP_Client** _ClientPtr, const char* _Host, const char* _Port) {
+int tcp_client_init_ptr(TCP_Client** _ClientPtr, const char* _Host, const char* _Port)
+{
   if (!_ClientPtr) {
     return ERR_INVALID_ARG;
   }
@@ -85,13 +86,14 @@ int tcp_client_init_ptr(TCP_Client** _ClientPtr, const char* _Host, const char* 
     free(client);
     return result;
   }
-  
+
   *(_ClientPtr) = client;
 
   return SUCCESS;
 }
 
-int tcp_client_set_nonblocking(int fd) {
+int tcp_client_set_nonblocking(int fd)
+{
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
     return ERR_IO;
@@ -104,38 +106,43 @@ int tcp_client_set_nonblocking(int fd) {
   return SUCCESS;
 }
 
-ssize_t tcp_client_realloc_data(TCP_Data* _Data, void* _input, size_t _size) 
+ssize_t tcp_client_realloc_data(TCP_Data* _Data, void* _input, size_t _size)
 {
   if (!_Data || !_input || !_size) {
     return ERR_INVALID_ARG;
   }
 
   ssize_t new_size = _size * sizeof(uint8_t);
-  void* ptr = realloc(_Data->addr, _Data->size + new_size + 1); // We reallocate memory for our chunk and make a pointer to the new addr
-  if (!ptr)
-  {
+  void* ptr = realloc(
+      _Data->addr, _Data->size + new_size +
+                       1); // We reallocate memory for our chunk and make a pointer to the new addr
+  if (!ptr) {
     perror("realloc");
     printf("Not enough memory for TCP buffer - realloc returned NULL\n");
     return ERR_NO_MEMORY;
   }
 
-  _Data->addr = ptr; // We redefine our addr to the newly allocated memory (Should test if previous addr pointer should be freed aswell?) 
-  memcpy(&(_Data->addr[_Data->size]), _input, new_size); // We copy realsize*bytes from contents to our chunk
-  _Data->size += new_size; // we add realsize to our chunksize
-  _Data->addr[_Data->size] = 0; // null last byte for strings 
+  _Data->addr = ptr; // We redefine our addr to the newly allocated memory (Should test if previous
+                     // addr pointer should be freed aswell?)
+  memcpy(&(_Data->addr[_Data->size]), _input,
+         new_size);             // We copy realsize*bytes from contents to our chunk
+  _Data->size += new_size;      // we add realsize to our chunksize
+  _Data->addr[_Data->size] = 0; // null last byte for strings
 
   return new_size; // We return the size of the chunk
 }
 
-int tcp_client_read_simple(TCP_Client* _Client, uint8_t* _buf, int _buf_len) {
+int tcp_client_read_simple(TCP_Client* _Client, uint8_t* _buf, int _buf_len)
+{
   return recv(_Client->fd, _buf, _buf_len, MSG_DONTWAIT);
 }
 
-int tcp_client_write(TCP_Client* _Client, size_t _Length) {
+int tcp_client_write(TCP_Client* _Client, size_t _Length)
+{
   if (!_Client || _Client->fd < 0 || !_Client->writeData) {
     return ERR_INVALID_ARG;
   }
-  
+
   size_t bytesLeft = _Length;
   size_t totalSent = 0;
   ssize_t bytesSent;
@@ -143,27 +150,28 @@ int tcp_client_write(TCP_Client* _Client, size_t _Length) {
 
   while (bytesLeft > 0) {
 
-      bytesSent = send(_Client->fd, message, bytesLeft, 0);
+    bytesSent = send(_Client->fd, message, bytesLeft, 0);
 
-      if (bytesSent < 0) {
-        if (errno == EINTR) continue;
-        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN) {
-          return totalSent;
-        }
-
-        perror("send");
-        return ERR_IO; // fatal error
+    if (bytesSent < 0) {
+      if (errno == EINTR)
+        continue;
+      if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN) {
+        return totalSent;
       }
 
-      if (bytesSent == 0) {
-        return (int)totalSent;
-      }
+      perror("send");
+      return ERR_IO; // fatal error
+    }
 
-      totalSent += bytesSent;
-      bytesLeft -= bytesSent;
-      message += bytesSent;
+    if (bytesSent == 0) {
+      return (int)totalSent;
+    }
+
+    totalSent += bytesSent;
+    bytesLeft -= bytesSent;
+    message += bytesSent;
   }
-    return (int)totalSent;
+  return (int)totalSent;
 }
 
 int tcp_client_write_simple(TCP_Client* _Client, const uint8_t* _buf, int _len)
@@ -179,11 +187,12 @@ void tcp_client_disconnect(TCP_Client* _Client)
   _Client->fd = -1;
 }
 
-int tcp_client_connect_step(TCP_Client* _Client) {
+int tcp_client_connect_step(TCP_Client* _Client)
+{
   if (!_Client || _Client->fd < 0 || !_Client->has_remote_addr) {
     return ERR_INVALID_ARG;
   }
-  
+
   int res = connect(_Client->fd, (struct sockaddr*)&_Client->remote_addr, _Client->remote_addr_len);
 
   if (res == 0) {
@@ -191,19 +200,20 @@ int tcp_client_connect_step(TCP_Client* _Client) {
   }
 
   if (errno == EISCONN) {
-    //Connected now
+    // Connected now
     return SUCCESS;
   }
 
   if (errno == EINPROGRESS || errno == EALREADY) {
-    //Still connecting
+    // Still connecting
     return ERR_BUSY;
   }
 
-  return ERR_IO; //Failed to connect
+  return ERR_IO; // Failed to connect
 }
 
-void tcp_client_dispose(TCP_Client* _Client) {
+void tcp_client_dispose(TCP_Client* _Client)
+{
   if (_Client == NULL) {
     return;
   }
@@ -226,7 +236,8 @@ void tcp_client_dispose(TCP_Client* _Client) {
   }
 }
 
-void tcp_client_dispose_ptr(TCP_Client** _ClientPtr) {
+void tcp_client_dispose_ptr(TCP_Client** _ClientPtr)
+{
   if (_ClientPtr == NULL || *(_ClientPtr) == NULL) {
     return;
   }
@@ -234,4 +245,3 @@ void tcp_client_dispose_ptr(TCP_Client** _ClientPtr) {
   free(*(_ClientPtr));
   *(_ClientPtr) = NULL;
 }
-

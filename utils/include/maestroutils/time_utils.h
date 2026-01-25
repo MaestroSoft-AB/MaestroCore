@@ -1,0 +1,36 @@
+#ifndef __TIME_UTILS_H__
+#define __TIME_UTILS_H__
+
+/* ******************************************************************* */
+/* *************************** TIME UTILS **************************** */
+/* ******************************************************************* */
+
+
+#include "misc_utils.h" // uses strdup 
+#include <time.h>
+#include <stdio.h>
+#include <stdint.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif /*_WIN32*/
+
+/* ---------------------- Interface ----------------------- */
+
+/* chatte generated custom timegm for non-posix platforms */
+#ifndef timegm 
+time_t timegm(struct tm* _tm);
+#endif /* timegm */
+
+uint64_t SystemMonotonicMS(); 
+/** Helper for parsing iso8601 formatted datetime string to time_t epoch */
+
+time_t parse_iso_datetime_string_to_epoch(const char* _time_str);
+/** Helper for parsing time_t epoch to iso8601 formatted datetime string
+ * uses strdup, i.e return value needs to be freed from heap by caller */
+
+const char* parse_epoch_to_iso_datetime_string(time_t* _epoch);
+
+/* -------------------------------------------------------- */
+
+#endif

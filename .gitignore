@@ -1,0 +1,60 @@
+# ===== Build output =====
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# ===== Object & dependency files =====
+*.obj
+*.elf
+*.d
+*.gcno
+*.gcda
+*.gcov
+
+# ===== Editor / IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.nvim/
+.cache/
+
+# ===== clangd / LSP =====
+.cache/clangd/
+.clangd/
+compile_commands.json
+
+# (keep compile_flags.txt tracked!)
+!compile_flags.txt
+
+# ===== OS junk =====
+.DS_Store
+Thumbs.db
+
+# ===== Debug / profiling =====
+vgcore.*
+gmon.out
+perf.data*
+core
+core.*
+
+# ===== Packaging / install staging =====
+dist/
+pkg/
+*.tar.gz
+*.zip
+
+# ===== Optional external deps build artifacts =====
+external/**/build/
+external/**/obj/
+
+# ===== Temporary test binaries =====
+test_*
+*_test
+
