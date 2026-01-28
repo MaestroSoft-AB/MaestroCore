@@ -4,8 +4,12 @@
 #ifndef _scheduler_h_
 #define _scheduler_h_
 
+#include <bits/pthreadtypes.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <pthread.h>
 
 #include <maestroutils/error.h>
 #include <maestroutils/misc_utils.h>
@@ -21,7 +25,7 @@ typedef struct
 {
   void* context;
   /*replace callback with work function from other module?*/
-  void (*callback)(void* _context, uint64_t _montime);
+  void (*callback)(void* _context);
 
 } Scheduler_Task;
 
@@ -35,10 +39,10 @@ extern Scheduler Global_Scheduler;
 
 int scheduler_init();
 Scheduler_Task* scheduler_create_task(void* _context,
-                                      void (*_callback)(void* _context, uint64_t _montime));
+                                      void (*_callback)(void* _context));
 void scheduler_destroy_task(Scheduler_Task* _Task);
-void scheduler_work(uint64_t _montime);
-int scheduler_get_task_count();
+void scheduler_work();
+int scheduler_get_task_count(int _Scheduler_index);
 void scheduler_dispose();
 
 #endif
