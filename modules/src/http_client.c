@@ -3,7 +3,7 @@
 #include <maestromodules/tcp_client.h>
 #include <stddef.h>
 
-void http_client_taskwork(void* _context, uint64_t _montime);
+void http_client_taskwork(void* _context);
 HTTPClientState http_client_worktask_connecting(HTTP_Client* _Client);
 HTTPClientState http_client_worktask_build_request(HTTP_Client* _Client);
 HTTPClientState http_client_worktask_send_request(HTTP_Client* _Client);
@@ -673,12 +673,11 @@ HTTPClientState http_client_worktask_returning(HTTP_Client* _Client)
   return HTTP_CLIENT_DISPOSING;
 }
 
-void http_client_taskwork(void* _context, uint64_t _montime)
+void http_client_taskwork(void* _context)
 {
   if (!_context) {
     return;
   }
-  (void)_montime;
   HTTP_Client* client = (HTTP_Client*)_context;
 
   uint64_t now = SystemMonotonicMS();
