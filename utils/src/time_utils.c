@@ -109,8 +109,6 @@ bool time_is_at_or_after_hour(int _hour)
 time_t epoch_now_day()
 {
   time_t now = time(NULL);
-  struct tm local_now;
-
   struct tm* today = gmtime(&now);
 
   today->tm_hour = 0;
@@ -122,8 +120,6 @@ time_t epoch_now_day()
 time_t epoch_now_hour()
 {
   time_t now = time(NULL);
-  struct tm local_now;
-
   struct tm* today = gmtime(&now);
 
   today->tm_min = 0;
@@ -134,8 +130,6 @@ time_t epoch_now_hour()
 time_t epoch_now_min()
 {
   time_t now = time(NULL);
-  struct tm local_now;
-
   struct tm* today = gmtime(&now);
 
   today->tm_sec = 0;

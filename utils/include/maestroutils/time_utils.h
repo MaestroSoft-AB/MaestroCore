@@ -16,8 +16,12 @@
 #include <windows.h>
 #endif /*_WIN32*/
 
-#define ISO_DATE_STRING     "%04d-%02d-%02d"
-#define ISO_DATE_STRING_LEN 10
+#define ISO_DATE_STRING_FULL      "%04d-%02d-%02dT%02d:%02d%c%02d:%02d"
+#define ISO_DATE_STRING_FULL_LEN  20
+#define ISO_DATE_STRING           "%04d-%02d-%02dT%02d:%02d"
+#define ISO_DATE_STRING_LEN       16
+#define ISO_DATE_STRING_DAY       "%04d-%02d-%02d"
+#define ISO_DATE_STRING_DAY_LEN   10
 
 /* ---------------------- Interface ----------------------- */
 
