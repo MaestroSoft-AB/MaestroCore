@@ -10,10 +10,14 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif /*_WIN32*/
+
+#define ISO_DATE_STRING     "%04d-%02d-%02d"
+#define ISO_DATE_STRING_LEN 10
 
 /* ---------------------- Interface ----------------------- */
 
@@ -30,6 +34,13 @@ time_t parse_iso_datetime_string_to_epoch(const char* _time_str);
  * uses strdup, i.e return value needs to be freed from heap by caller */
 
 const char* parse_epoch_to_iso_datetime_string(time_t* _epoch);
+
+bool time_is_at_or_after_hour(int _hour);
+
+/* Get epoch with specified accuracy */
+time_t epoch_now_day();
+time_t epoch_now_hour();
+time_t epoch_now_min();
 
 /* -------------------------------------------------------- */
 

@@ -95,3 +95,50 @@ const char* parse_epoch_to_iso_datetime_string(time_t* _epoch)
   }
   return strdup(iso_string);
 }
+
+bool time_is_at_or_after_hour(int _hour) 
+{
+    time_t now = time(NULL);
+    struct tm local;
+    localtime_r(&now, &local);
+
+    return (local.tm_hour > _hour) ||
+           (local.tm_hour == _hour && local.tm_min >= 0);
+}
+
+time_t epoch_now_day()
+{
+  time_t now = time(NULL);
+  struct tm local_now;
+
+  struct tm* today = gmtime(&now);
+
+  today->tm_hour = 0;
+  today->tm_min = 0;
+  today->tm_sec = 0;
+
+  return timegm(today);
+}
+time_t epoch_now_hour()
+{
+  time_t now = time(NULL);
+  struct tm local_now;
+
+  struct tm* today = gmtime(&now);
+
+  today->tm_min = 0;
+  today->tm_sec = 0;
+
+  return timegm(today);
+}
+time_t epoch_now_min()
+{
+  time_t now = time(NULL);
+  struct tm local_now;
+
+  struct tm* today = gmtime(&now);
+
+  today->tm_sec = 0;
+
+  return timegm(today);
+}
