@@ -20,7 +20,7 @@ MOD_INC_DIR := modules/include
 UTL_INC_DIR := utils/include
 
 # --- Optional cJSON vendor/submodule ---
-CJSON_DIR ?= external/cjson
+CJSON_DIR ?= ../cJSON
 CJSON_SRC := $(CJSON_DIR)/cJSON.c
 CJSON_INC := $(CJSON_DIR)
 
