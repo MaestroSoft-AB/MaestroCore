@@ -18,6 +18,10 @@
 #define SCHEDULER_MAX_TASKS 10000
 #endif
 
+#ifndef SORTER_MAX_TASKS_IN_QUEUE
+#define SORTER_MAX_TASKS_IN_QUEUE 10000
+#endif
+
 #define MIN_LOOP_MS 1 // Defines how many ms a scheduler task-loop needs to take at a minimum
 
 typedef struct
@@ -33,6 +37,13 @@ typedef struct
   Scheduler_Task tasks[SCHEDULER_MAX_TASKS];
 
 } Scheduler;
+
+typedef struct
+{
+  int* scheduler_task_count;
+  Scheduler_Task queue[SORTER_MAX_TASKS_IN_QUEUE];
+
+} Sorter;
 
 extern Scheduler Global_Scheduler;
 

@@ -3,6 +3,8 @@
 #include <time.h>
 #include <unistd.h>
 
+// TODO: Add error handling
+
 typedef struct
 {
   int num_threads_schedulers;
@@ -15,6 +17,7 @@ typedef struct
 /* ----------------------- Global vars ----------------------- */
 
 SchedulerThreads g_schedulerthreads;
+Sorter g_sorter;
 /* const uint64_t min_loop_ms = MIN_LOOP_MS; // Defines how many ms a scheduler task-loop needs to
  * take at a minimum */
 
@@ -24,6 +27,7 @@ SchedulerThreads g_schedulerthreads;
 
 /* ---------------------- Thread specific -------------------- */
 
+// TODO: Add keep-alive/sleep + detach();
 void scheduler_thread_work(Scheduler* _Scheduler)
 {
   int i;
@@ -71,6 +75,8 @@ int scheduler_init()
       (pthread_t*)malloc(sizeof(pthread_t) * g_schedulerthreads.num_threads_schedulers);
   g_schedulerthreads.schedulers =
       (Scheduler*)malloc(sizeof(Scheduler) * g_schedulerthreads.num_threads_schedulers);
+  g_sorter.scheduler_task_count =
+      (int*)malloc(sizeof(int) * g_schedulerthreads.num_threads_schedulers);
 
   for (int i = 0; i < g_schedulerthreads.num_threads_schedulers; i++) {
     pthread_create(&g_schedulerthreads.threads[i], NULL, scheduler_thread_init,
@@ -81,7 +87,7 @@ int scheduler_init()
 }
 
 // Todo: scheduler_get_task_count needs to return index of least busy worker so that
-// scheduler_add_task can delegate task to to thread.
+// scheduler_add_task can delegate task to thread.
 
 Scheduler_Task* scheduler_create_task(void* _context, void (*_callback)(void* _context))
 {
@@ -115,21 +121,11 @@ void scheduler_destroy_task(Scheduler_Task* _Task)
   }
 }
 
-int scheduler_get_task_count(int _Scheduler_index)
+// Returns index with lowest value in g_sorter.scheduler_task_count; (Least encumbered scheduler).
+int sorter_get_next()
 {
-  if (_Scheduler_index < 0 || _Scheduler_index > g_schedulerthreads.num_threads_schedulers - 1) {
-    return -1;
-  }
 
-  int tasks = 0;
-  int i;
-  for (i = 0; i < SCHEDULER_MAX_TASKS; i++) {
-    if (g_schedulerthreads.schedulers[_Scheduler_index].tasks[i].callback != NULL) {
-      tasks++;
-    }
-  }
-
-  return tasks;
+  return blabla;
 }
 
 void scheduler_dispose() // TODO: Add free() for threads and schedulers as outlined in
