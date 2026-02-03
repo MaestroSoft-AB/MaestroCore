@@ -13,6 +13,13 @@ HTTPClientState http_client_worktask_read_body(HTTP_Client* _Client);
 HTTPClientState http_client_worktask_returning(HTTP_Client* _Client);
 HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client);
 HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client* _Client);
+HTTPClientState http_client_worktask_waiting_connect(HTTP_Client* _Client);
+
+/*******************Blocking funcs*****************************/
+static int http_blocking_work(const char* _url, HTTPMethod _method, const http_data* _in_body,
+                              http_data* _out_body, int _timeout_ms);
+
+/*************************************************************/
 
 int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _method,
                          http_client_on_success _on_success, void* _context, char** _response_out)
@@ -60,6 +67,7 @@ int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _met
   _Client->url_parts = url_parts;
   _Client->response_out = _response_out;
   _Client->context = _context;
+  _Client->timeout_ms = 0;
 
   // Check url for http/https
   _Client->tls = false;
@@ -68,6 +76,144 @@ int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _met
   _Client->decoded_body_len = 0;
 
   return 0;
+}
+
+int http_blocking_get(const char* _url, http_data* _out, int _timeout_ms)
+{
+  if (!_url || !_out) {
+    return ERR_INVALID_ARG;
+  }
+
+  _out->data = NULL;
+  _out->size = 0;
+
+  return http_blocking_work(_url, HTTP_GET, NULL, _out, _timeout_ms);
+}
+
+int http_blocking_post(const char* _url, const http_data* _in, http_data* _out, int _timeout_ms)
+{
+  if (!_url || !_in || (_in->size < 0)) {
+    return ERR_INVALID_ARG;
+  }
+
+  if (_out) {
+    _out->data = NULL;
+    _out->size = 0;
+  }
+
+  return http_blocking_work(_url, HTTP_POST, _in, _out, _timeout_ms);
+}
+
+static int http_blocking_work(const char* _url, HTTPMethod _method, const http_data* _in_body,
+                              http_data* _out_body, int _timeout_ms)
+{
+  HTTP_Client* c = calloc(1, sizeof(*c));
+  if (!c) {
+    return ERR_NO_MEMORY;
+  }
+
+  c->URL = strdup(_url);
+  c->req = calloc(1, sizeof(HTTP_Request));
+  c->resp = calloc(1, sizeof(HTTP_Response));
+  if (!c->URL || !c->req || !c->resp) {
+    http_client_dispose(c);
+    return ERR_NO_MEMORY;
+  }
+
+  c->blocking_mode = 1;
+  c->timeout_ms = _timeout_ms;
+
+  c->method = _method;
+
+  if (_in_body && _in_body->data && _in_body->size > 0) {
+    c->req->body = malloc(_in_body->size);
+    if (!c->req->body) {
+      http_client_dispose(c);
+      return ERR_NO_MEMORY;
+    }
+    memcpy(c->req->body, _in_body->data, _in_body->size);
+    c->req->body_len = (size_t)_in_body->size;
+  }
+
+  c->blocking_out = _out_body;
+  c->state = HTTP_CLIENT_CONNECTING;
+
+  uint64_t start = SystemMonotonicMS();
+
+  while (1) {
+    uint64_t now = SystemMonotonicMS();
+    if (_timeout_ms > 0 && ((int)now - start) > _timeout_ms) {
+      http_client_dispose(c);
+      return ERR_TIMEOUT;
+    }
+
+    switch (c->state) {
+    case HTTP_CLIENT_CONNECTING: {
+      printf("Blocking: HTTP_CLIENT_CONNECTING\n");
+      c->state = http_client_worktask_connecting(c);
+      break;
+    }
+
+    case HTTP_CLIENT_BUILDING_REQUEST: {
+      printf("Blocking: HTTP_CLIENT_BUILDING_REQUEST\n");
+      c->state = http_client_worktask_build_request(c);
+      break;
+    }
+
+    case HTTP_CLIENT_SENDING_REQUEST: {
+      printf("Blocking: HTTP_CLIENT_SENDING_REQUEST\n");
+      c->state = http_client_worktask_send_request(c);
+      break;
+    }
+
+    case HTTP_CLIENT_READING_FIRSTLINE: {
+      printf("Blocking: HTTP_CLIENT_READING_FIRSTLINE\n");
+      c->state = http_client_worktask_read_firstline(c);
+      break;
+    }
+
+    case HTTP_CLIENT_READING_HEADERS: {
+      printf("Blocking: HTTP_CLIENT_READING_HEADERS\n");
+      c->state = http_client_worktask_read_headers(c);
+      break;
+    }
+
+    case HTTP_CLIENT_DECIPHER_CHONKINESS: {
+      printf("Blocking: HTTP_CLIENT_DECIPHER_CHONKINESS\n");
+      c->state = http_client_worktask_decipher_chonkiness(c);
+      break;
+    }
+
+    case HTTP_CLIENT_READING_BODY_CHUNKED: {
+      printf("Blocking: HTTP_CLIENT_READING_BODY_CHUNKED\n");
+      c->state = http_client_worktask_read_body_chunked(c);
+      break;
+    }
+
+    case HTTP_CLIENT_READING_BODY: {
+      printf("Blocking: HTTP_CLIENT_READING_BODY\n");
+      c->state = http_client_worktask_read_body(c);
+      break;
+    }
+
+    case HTTP_CLIENT_RETURNING: {
+      printf("Blocking: HTTP_CLIENT_RETURNING\n");
+      c->state = http_client_worktask_returning(c);
+      break;
+    }
+
+    case HTTP_CLIENT_DISPOSING: {
+      printf("Blocking: HTTP_CLIENT_DISPOSING\n");
+      http_client_dispose(c);
+      return SUCCESS;
+    }
+
+    case HTTP_CLIENT_ERROR:
+    default:
+      http_client_dispose(c);
+      return ERR_IO;
+    }
+  }
 }
 
 HTTPClientState http_client_worktask_connecting(HTTP_Client* _Client)
@@ -87,7 +233,18 @@ HTTPClientState http_client_worktask_connecting(HTTP_Client* _Client)
     const char* PORT = "80";
     // printf("URL: %s\n", _Client->url_parts.host);
     // printf("Pprt: %s\n", PORT);
-    int result = tcp_client_init(&_Client->tcp_client, _Client->url_parts.host, PORT);
+    int result;
+
+    if (_Client->blocking_mode) {
+      result = tcp_client_blocking_init(&_Client->tcp_client, _Client->url_parts.host, PORT,
+                                        _Client->timeout_ms); // need to create this
+    } else {
+      result = tcp_client_init(&_Client->tcp_client, _Client->url_parts.host, PORT);
+    }
+
+    if (result == ERR_IN_PROGRESS) {
+      return HTTP_CLIENT_WAITING_CONNECT;
+    }
 
     if (result != SUCCESS) {
       printf("TCP_Client init failed\n");
@@ -103,6 +260,26 @@ HTTPClientState http_client_worktask_connecting(HTTP_Client* _Client)
   return HTTP_CLIENT_BUILDING_REQUEST;
 }
 
+HTTPClientState http_client_worktask_waiting_connect(HTTP_Client* _Client)
+{
+  if (!_Client) {
+    return HTTP_CLIENT_ERROR;
+  }
+
+  int res = tcp_client_finish_connect(_Client->tcp_client.fd);
+  if (res == SUCCESS) {
+    _Client->retries = 0;
+    return HTTP_CLIENT_BUILDING_REQUEST;
+  }
+
+  if (errno == EINPROGRESS || errno == EALREADY || errno == EAGAIN) {
+    _Client->next_retry_at = SystemMonotonicMS() + 50;
+    return HTTP_CLIENT_WAITING_CONNECT;
+  }
+
+  return HTTP_CLIENT_ERROR;
+}
+
 HTTPClientState http_client_worktask_build_request(HTTP_Client* _Client)
 {
   if (!_Client) {
@@ -111,25 +288,68 @@ HTTPClientState http_client_worktask_build_request(HTTP_Client* _Client)
 
   const char* method_str = "GET";
 
-  size_t base_len = 92;
-  size_t max_len = strlen(_Client->URL) + base_len;
+  if (_Client->method == HTTP_POST) {
+    method_str = "POST";
+  } else if (_Client->method == HTTP_PUT) {
+    method_str = "PUT";
+  } else if (_Client->method == HTTP_DELETE) {
+    method_str = "DELETE";
+  }
+
+  const char* path = (_Client->url_parts.path[0] ? _Client->url_parts.path : "/");
+
+  size_t body_len = (_Client->req->body && _Client->req->body_len > 0) ? _Client->req->body_len : 0;
+  size_t extra_space = body_len > 0 ? 128 : 0;
+
+  size_t max_len = strlen(_Client->url_parts.host) + strlen(path) + 256 + extra_space + body_len;
+
   _Client->request_buffer = malloc(max_len);
   if (!_Client->request_buffer) {
     return HTTP_CLIENT_ERROR;
   }
 
-  _Client->request_length = snprintf((char*)_Client->request_buffer, max_len,
-                                     "%s %s HTTP/1.1\r\n"
-                                     "Host: %s\r\n"
-                                     "User-Agent: httpclient\r\n"
-                                     "Connection: close\r\n\r\n",
-                                     method_str, _Client->url_parts.path, _Client->url_parts.host);
+  int hdr_len;
 
-  if (_Client->request_length < 0 || (size_t)_Client->request_length >= max_len) {
+  if (body_len > 0 && (_Client->method == HTTP_POST || _Client->method == HTTP_PUT)) {
+    hdr_len = snprintf((char*)_Client->request_buffer, max_len,
+                       "%s %s HTTP/1.1\r\n"
+                       "Host: %s\r\n"
+                       "User-Agent: httpclient\r\n"
+                       "Connection: close\r\n"
+                       "Content-Length: %zu\r\n"
+                       "Content-Type: application/octet-stream\r\n"
+                       "\r\n",
+                       method_str, path, _Client->url_parts.host, body_len);
+  } else {
+    hdr_len = snprintf((char*)_Client->request_buffer, max_len,
+                       "%s %s HTTP/1.1\r\n"
+                       "Host: %s\r\n"
+                       "User-Agent: httpclient\r\n"
+                       "Connection: close\r\n"
+                       "\r\n",
+                       method_str, path, _Client->url_parts.host);
+  }
+
+  if (hdr_len < 0) {
     free(_Client->request_buffer);
     _Client->request_buffer = NULL;
     return HTTP_CLIENT_ERROR;
   }
+
+  size_t headers_len = (size_t)hdr_len;
+
+  if (headers_len + body_len > max_len) {
+    free(_Client->request_buffer);
+    _Client->request_buffer = NULL;
+    return HTTP_CLIENT_ERROR;
+  }
+
+  if (body_len > 0) {
+    memcpy(_Client->request_buffer + headers_len, _Client->req->body, body_len);
+  }
+
+  _Client->request_length = (int)(headers_len + body_len);
+  _Client->bytes_sent = 0;
 
   return HTTP_CLIENT_SENDING_REQUEST;
 }
@@ -660,6 +880,21 @@ HTTPClientState http_client_worktask_returning(HTTP_Client* _Client)
     src_len = _Client->tcp_client.data.size;
   }
 
+  if (_Client->blocking_out) {
+    uint8_t* buf = malloc(src_len ? src_len : 1);
+    if (!buf) {
+      return HTTP_CLIENT_ERROR;
+    }
+
+    if (src_len) {
+      memcpy(buf, src, src_len);
+    }
+
+    _Client->blocking_out->data = buf;
+    _Client->blocking_out->size = (ssize_t)src_len;
+    return HTTP_CLIENT_DISPOSING;
+  }
+
   char* response_out = malloc(src_len + 1);
   if (response_out == NULL) {
     perror("malloc");
@@ -690,8 +925,16 @@ void http_client_taskwork(void* _context, uint64_t _montime)
     break;
   }
   case HTTP_CLIENT_CONNECTING: {
-    printf("HTTP_CLIENT_CONNECTING\n");
-    client->state = http_client_worktask_connecting(client);
+    if (now >= client->next_retry_at) {
+      printf("HTTP_CLIENT_CONNECTING\n");
+      client->state = http_client_worktask_connecting(client);
+      break;
+    }
+    break;
+  }
+  case HTTP_CLIENT_WAITING_CONNECT: {
+    printf("HTTP_CLIENT_WAITING_CONNECT\n");
+    client->state = http_client_worktask_waiting_connect(client);
     break;
   }
   case HTTP_CLIENT_BUILDING_REQUEST: {

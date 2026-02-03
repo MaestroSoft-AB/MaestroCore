@@ -1,11 +1,12 @@
 #include <maestromodules/tcp_client.h>
 #include <maestroutils/error.h>
+#include <poll.h>
 #include <stdint.h>
 
 /*---------------------Internal functions------------------------------*/
 
-int tcp_client_set_nonblocking(int fd);
-
+int tcp_client_set_nonblocking(int fd, int nonblocking);
+int tcp_client_wait_writable(int fd, int timeout);
 /*---------------------------------------------------------------------*/
 int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
 {
@@ -24,6 +25,8 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
   addresses.ai_socktype = SOCK_STREAM; /* TCP */
   addresses.ai_protocol = IPPROTO_TCP;
 
+  int status = ERR_IO;
+
   struct addrinfo* result = NULL;
   int rc = getaddrinfo(_Host, _Port, &addresses, &result);
   if (rc != 0) {
@@ -38,7 +41,7 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
     if (fd < 0)
       continue;
 
-    if (tcp_client_set_nonblocking(fd) != SUCCESS) {
+    if (tcp_client_set_nonblocking(fd, 1) != SUCCESS) {
       close(fd);
       fd = -1;
       continue;
@@ -46,6 +49,7 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
 
     int cres = connect(fd, addr_info->ai_addr, addr_info->ai_addrlen);
     if (cres == 0) {
+      status = SUCCESS;
       memset(&_Client->remote_addr, 0, sizeof(_Client->remote_addr));
       memcpy(&_Client->remote_addr, addr_info->ai_addr, addr_info->ai_addrlen);
       _Client->remote_addr_len = (socklen_t)addr_info->ai_addrlen;
@@ -54,6 +58,11 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
     }
     if (cres < 0 && errno == EINPROGRESS) {
       /* non-blocking connect pågår */
+      status = ERR_IN_PROGRESS;
+      memset(&_Client->remote_addr, 0, sizeof(_Client->remote_addr));
+      memcpy(&_Client->remote_addr, addr_info->ai_addr, addr_info->ai_addrlen);
+      _Client->remote_addr_len = (socklen_t)addr_info->ai_addrlen;
+      _Client->has_remote_addr = 1;
       break;
     }
 
@@ -68,7 +77,7 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
   }
 
   _Client->fd = fd;
-  return SUCCESS;
+  return status;
 }
 
 int tcp_client_init_ptr(TCP_Client** _ClientPtr, const char* _Host, const char* _Port)
@@ -92,14 +101,136 @@ int tcp_client_init_ptr(TCP_Client** _ClientPtr, const char* _Host, const char* 
   return SUCCESS;
 }
 
-int tcp_client_set_nonblocking(int fd)
+int tcp_client_blocking_init(TCP_Client* _Client, const char* _host, const char* _port,
+                             int _timeout_ms)
+{
+  if (!_Client || !_host || !_port) {
+    return ERR_INVALID_ARG;
+  }
+
+  _Client->fd = -1;
+  _Client->readData = NULL;
+  _Client->writeData = NULL;
+  _Client->data.addr = NULL;
+  _Client->has_remote_addr = 0;
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+  hints.ai_flags = AI_ADDRCONFIG;
+
+  struct addrinfo* result = NULL;
+
+  int res = getaddrinfo(_host, _port, &hints, &result);
+  if (res != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(res));
+    return ERR_IO;
+  }
+
+  int fd = -1;
+  int last_err = ERR_IO;
+
+  for (struct addrinfo* ai = result; ai; ai = ai->ai_next) {
+    fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (fd < 0) {
+      continue;
+    }
+
+    // Set nonblocking so we can use poll with timeout
+    if (tcp_client_set_nonblocking(fd, 1) != SUCCESS) {
+      close(fd);
+      fd = -1;
+      continue;
+    }
+    int cres;
+    do {
+      cres = connect(fd, ai->ai_addr, ai->ai_addrlen);
+    } while (cres < 0 && errno == EINTR);
+
+    if (cres == 0) {
+      // Connected
+      last_err = SUCCESS;
+    } else if (cres < 0 && errno == EINPROGRESS) {
+      // Connecting, wait for writable
+      int wr = tcp_client_wait_writable(fd, _timeout_ms);
+      if (wr != SUCCESS) {
+        last_err = wr;
+      } else {
+        // check if connect was successful
+        last_err = tcp_client_finish_connect(fd);
+      }
+    } else {
+      last_err = ERR_IO;
+    }
+
+    if (last_err == SUCCESS) {
+      memset(&_Client->remote_addr, 0, sizeof(_Client->remote_addr));
+      memcpy(&_Client->remote_addr, ai->ai_addr, ai->ai_addrlen);
+      _Client->remote_addr_len = (socklen_t)ai->ai_addrlen;
+      _Client->has_remote_addr = 1;
+
+      if (tcp_client_set_nonblocking(fd, 0) != SUCCESS) {
+        close(fd);
+        fd = -1;
+        last_err = ERR_IO;
+        continue;
+      }
+      _Client->fd = fd;
+      break;
+    }
+
+    close(fd);
+    fd = -1;
+  }
+
+  freeaddrinfo(result);
+
+  if (_Client->fd < 0) {
+    return last_err;
+  }
+  return SUCCESS;
+}
+
+int tcp_client_set_nonblocking(int fd, int nonblocking)
 {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
     return ERR_IO;
   }
 
-  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+  if (nonblocking) {
+    flags |= O_NONBLOCK;
+  } else {
+    flags &= ~O_NONBLOCK;
+  }
+
+  if (fcntl(fd, F_SETFL, flags) == -1) {
+    return ERR_IO;
+  }
+
+  return SUCCESS;
+}
+
+int tcp_client_wait_writable(int _fd, int _timeout_ms)
+{
+  struct pollfd pfd;
+
+  memset(&pfd, 0, sizeof(pfd));
+  pfd.fd = _fd;
+  pfd.events = POLLOUT | POLLERR | POLLHUP;
+
+  int res;
+
+  do {
+    res = poll(&pfd, 1, _timeout_ms);
+  } while (res < 0 && errno == EINTR);
+
+  if (res == 0) {
+    return ERR_TIMEOUT;
+  }
+  if (res < 0) {
     return ERR_IO;
   }
 
@@ -134,7 +265,7 @@ ssize_t tcp_client_realloc_data(TCP_Data* _Data, void* _input, size_t _size)
 
 int tcp_client_read_simple(TCP_Client* _Client, uint8_t* _buf, int _buf_len)
 {
-  return recv(_Client->fd, _buf, _buf_len, MSG_DONTWAIT);
+  return recv(_Client->fd, _buf, _buf_len, 0);
 }
 
 int tcp_client_write(TCP_Client* _Client, size_t _Length)
@@ -210,6 +341,22 @@ int tcp_client_connect_step(TCP_Client* _Client)
   }
 
   return ERR_IO; // Failed to connect
+}
+
+int tcp_client_finish_connect(int _fd)
+{
+  int soerr = 0;
+  socklen_t slen = sizeof(soerr);
+
+  if (getsockopt(_fd, SOL_SOCKET, SO_ERROR, &soerr, &slen) < 0) {
+    return ERR_IO;
+  }
+
+  if (soerr != 0) {
+    errno = soerr;
+    return ERR_IO;
+  }
+  return SUCCESS;
 }
 
 void tcp_client_dispose(TCP_Client* _Client)
