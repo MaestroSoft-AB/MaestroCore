@@ -1,13 +1,16 @@
--Imodules/include
--Iutils/include
--Itest/unity
--test/cmock/src
--Itest/mocks
+# --- Project modules ---
 -Imodules/include
 -Iutils/include
 
--I/home/user/MaestroCore/test/unity
--I/home/user/MaestroCore/test/cmock/src
--I/home/user/MaestroCore/test/mocks
--I/home/user/MaestroCore/modules/include
--I/home/user/MaestroCore/utils/include
+# --- Testing Framework (Unity & CMock) ---
+# Unity ligger inuti CMock-mappen i din struktur
+-Itest/cmock/vendor/unity/src
+-Itest/cmock/src
+-Itest/mocks
+
+# --- mbedTLS 4.0.0 ---
+-Iexternal/mbedtls/include
+-Iexternal/mbedtls/library/psa_crypto/include
+
+# --- Globala Definitions ---
+-DMBEDTLS_CONFIG_FILE=<maestromodules/tls_config.h>
