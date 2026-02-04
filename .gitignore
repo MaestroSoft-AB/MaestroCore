@@ -60,6 +60,7 @@ external/**/obj/
 # ===== Temporary test binaries =====
 test_*
 *_test
+!test_*.c
 
 # ===== CMock / Unit Testing =====
 test/mocks/*
