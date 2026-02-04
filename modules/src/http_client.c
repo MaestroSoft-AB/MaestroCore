@@ -142,7 +142,7 @@ static int http_blocking_work(const char* _url, HTTPMethod _method, const http_d
 
   while (1) {
     uint64_t now = SystemMonotonicMS();
-    if (_timeout_ms > 0 && ((int)now - start) > _timeout_ms) {
+    if (_timeout_ms > 0 && ((int)now - start) > (uint64_t)_timeout_ms) {
       http_client_dispose(c);
       return ERR_TIMEOUT;
     }

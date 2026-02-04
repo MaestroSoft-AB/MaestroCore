@@ -4,13 +4,13 @@
 
 UNAME_S := $(shell uname -s)
 
-CC     ?= cc
-AR     ?= ar
-RANLIB ?= ranlib
+CC      ?= cc
+AR      ?= ar
+RANLIB  ?= ranlib
 
 BUILD_DIR := build
-OBJ_DIR   := $(BUILD_DIR)/obj
-LIB_DIR   := $(BUILD_DIR)/lib
+OBJ_DIR    := $(BUILD_DIR)/obj
+LIB_DIR    := $(BUILD_DIR)/lib
 
 # --- Project layout ---
 MOD_SRC_DIR := modules/src
@@ -19,14 +19,21 @@ UTL_SRC_DIR := utils/src
 MOD_INC_DIR := modules/include
 UTL_INC_DIR := utils/include
 
+# --- Unity / Testing ---
+TEST_DIR     := test
+UNITY_DIR    := $(TEST_DIR)/unity
+TEST_SRC_DIR := $(TEST_DIR)
+TEST_OBJ_DIR := $(OBJ_DIR)/tests
+TEST_BIN     := $(BUILD_DIR)/test_suite
+
 # --- Optional cJSON vendor/submodule ---
 CJSON_DIR ?= external/cjson
 CJSON_SRC := $(CJSON_DIR)/cJSON.c
 CJSON_INC := $(CJSON_DIR)
 
 # --- Flags ---
-CSTD     ?= -std=c11
-OPTFLAGS ?= -O2
+CSTD      ?= -std=c11
+OPTFLAGS  ?= -O2
 WARNFLAGS := -Wall -Wextra -Wpedantic
 
 CPPFLAGS += -I$(MOD_INC_DIR) -I$(UTL_INC_DIR)
@@ -43,8 +50,6 @@ endif
 
 # --- Sources ---
 MOD_SRCS := $(wildcard $(MOD_SRC_DIR)/*.c)
-
-# utils: build everything EXCEPT json_utils.c unless JSON=1
 UTL_SRCS_ALL := $(wildcard $(UTL_SRC_DIR)/*.c)
 
 ifeq ($(WITH_CJSON),1)
@@ -53,7 +58,6 @@ else
   UTL_SRCS := $(filter-out $(UTL_SRC_DIR)/json_utils.c,$(UTL_SRCS_ALL))
 endif
 
-# Optional cJSON object
 ifeq ($(WITH_CJSON),1)
   CJSON_OBJ := $(OBJ_DIR)/external/cjson.o
 else
@@ -79,7 +83,7 @@ LIB_CORE    := $(LIB_DIR)/libmaestrocore.a
 # ========= Targets ===========
 # =============================
 
-.PHONY: all core modules utils clean print install uninstall
+.PHONY: all core modules utils clean print install uninstall test
 
 all: core
 
@@ -89,19 +93,16 @@ modules: $(LIB_MODULES)
 
 utils: $(LIB_UTILS)
 
-$(LIB_DIR):
-	@mkdir -p $@
+# --- Test Target ---
+# Run make test to build and run tests 
+test: $(TEST_BIN)
+	@echo "--------------------------------------"
+	@echo "   RUNNING UNIT TESTS (UNITY)"
+	@echo "--------------------------------------"
+	@./$(TEST_BIN)
 
-$(OBJ_DIR):
-	@mkdir -p $@
-
-$(OBJ_DIR)/modules:
-	@mkdir -p $@
-
-$(OBJ_DIR)/utils:
-	@mkdir -p $@
-
-$(OBJ_DIR)/external:
+# --- Directory creation ---
+$(LIB_DIR) $(OBJ_DIR) $(OBJ_DIR)/modules $(OBJ_DIR)/utils $(OBJ_DIR)/external $(TEST_OBJ_DIR):
 	@mkdir -p $@
 
 # --- Archive build ---
@@ -118,17 +119,24 @@ $(LIB_UTILS): $(LIB_DIR) $(UTL_OBJS) $(CJSON_OBJ)
 	$(RANLIB) $@
 
 # --- Compile rules ---
-$(OBJ_DIR)/modules/%.o: $(MOD_SRC_DIR)/%.c | $(OBJ_DIR) $(OBJ_DIR)/modules
-	@mkdir -p $(dir $@)
+$(OBJ_DIR)/modules/%.o: $(MOD_SRC_DIR)/%.c | $(OBJ_DIR)/modules
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/utils/%.o: $(UTL_SRC_DIR)/%.c | $(OBJ_DIR) $(OBJ_DIR)/utils
-	@mkdir -p $(dir $@)
+$(OBJ_DIR)/utils/%.o: $(UTL_SRC_DIR)/%.c | $(OBJ_DIR)/utils
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/external/cjson.o: $(CJSON_SRC) | $(OBJ_DIR) $(OBJ_DIR)/external
-	@mkdir -p $(dir $@)
+$(OBJ_DIR)/external/cjson.o: $(CJSON_SRC) | $(OBJ_DIR)/external
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+# --- Test Build Rules ---
+$(TEST_BIN): $(TEST_OBJ_DIR)/unity.o $(TEST_OBJ_DIR)/test_http.o $(LIB_CORE)
+	$(CC) $(CFLAGS) $^ -o $@
+
+$(TEST_OBJ_DIR)/unity.o: $(UNITY_DIR)/unity.c | $(TEST_OBJ_DIR)
+	$(CC) $(CFLAGS) -I$(UNITY_DIR) -c $< -o $@
+
+$(TEST_OBJ_DIR)/test_http.o: $(TEST_SRC_DIR)/test_http.c | $(TEST_OBJ_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(UNITY_DIR) -c $< -o $@
 
 # --- Housekeeping ---
 clean:
@@ -138,33 +146,24 @@ print:
 	@echo "WITH_CJSON=$(WITH_CJSON)"
 	@echo "MOD_SRCS=$(MOD_SRCS)"
 	@echo "UTL_SRCS=$(UTL_SRCS)"
-	@echo "CPPFLAGS=$(CPPFLAGS)"
-	@echo "CFLAGS=$(CFLAGS)"
 	@echo "LIB_CORE=$(LIB_CORE)"
+	@echo "TEST_BIN=$(TEST_BIN)"
 
 # =============================
 # ========= Install ===========
 # =============================
 
-# Install to PREFIX (default /usr/local):
 PREFIX ?= /usr/local
 INCDIR := $(PREFIX)/include
 LIBINSTDIR := $(PREFIX)/lib
 
-# Installs:
-#  - umbrella headers: maestromodules.h, maestroutils.h
-#  - namespaced headers: maestromodules/*, maestroutils/*
-#  - the libs you built (core/modules/utils)
 install: all
 	@mkdir -p "$(DESTDIR)$(INCDIR)" "$(DESTDIR)$(LIBINSTDIR)"
-	@# umbrella headers
 	@cp -f $(MOD_INC_DIR)/maestromodules.h "$(DESTDIR)$(INCDIR)/"
-	@cp -f $(UTL_INC_DIR)/maestroutils.h   "$(DESTDIR)$(INCDIR)/"
-	@# namespaced dirs
+	@cp -f $(UTL_INC_DIR)/maestroutils.h    "$(DESTDIR)$(INCDIR)/"
 	@mkdir -p "$(DESTDIR)$(INCDIR)/maestromodules" "$(DESTDIR)$(INCDIR)/maestroutils"
 	@cp -f $(MOD_INC_DIR)/maestromodules/*.h "$(DESTDIR)$(INCDIR)/maestromodules/"
 	@cp -f $(UTL_INC_DIR)/maestroutils/*.h   "$(DESTDIR)$(INCDIR)/maestroutils/"
-	@# libs
 	@cp -f $(LIB_CORE) "$(DESTDIR)$(LIBINSTDIR)/"
 	@echo "Installed to $(DESTDIR)$(PREFIX)"
 
@@ -172,9 +171,6 @@ uninstall:
 	@rm -f "$(DESTDIR)$(INCDIR)/maestromodules.h" "$(DESTDIR)$(INCDIR)/maestroutils.h"
 	@rm -rf "$(DESTDIR)$(INCDIR)/maestromodules" "$(DESTDIR)$(INCDIR)/maestroutils"
 	@rm -f "$(DESTDIR)$(LIBINSTDIR)/libmaestrocore.a"
-	@rm -f "$(DESTDIR)$(LIBINSTDIR)/libmaestromodules.a"
-	@rm -f "$(DESTDIR)$(LIBINSTDIR)/libmaestroutils.a"
 	@echo "Uninstalled from $(DESTDIR)$(PREFIX)"
 
 -include $(DEPS)
-

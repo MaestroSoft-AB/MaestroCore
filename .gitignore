@@ -58,3 +58,9 @@ external/**/obj/
 test_*
 *_test
 
+# ===== CMock / Unit Testing =====
+test/cmock/
+test/mocks/
+
+#Ruby
+.rake_test_cache
