@@ -7,6 +7,9 @@ build/
 *.dll
 *.exe
 *.out
+build/
+bin/
+obj/
 
 # ===== Object & dependency files =====
 *.obj
@@ -59,8 +62,9 @@ test_*
 *_test
 
 # ===== CMock / Unit Testing =====
-test/cmock/
-test/mocks/
+test/mocks/*
+!test/mocks/.gitkeep
+build/test_suite
 
 #Ruby
 .rake_test_cache
