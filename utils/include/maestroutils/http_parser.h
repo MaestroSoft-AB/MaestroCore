@@ -62,7 +62,7 @@ typedef struct
   int params_count;
   int firstline_len; // To set pointer for headers parsing
   int headers_len;
-  int bode_len;
+  int body_len;
 
 } HTTP_Request;
 

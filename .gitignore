@@ -7,6 +7,9 @@ build/
 *.dll
 *.exe
 *.out
+build/
+bin/
+obj/
 
 # ===== Object & dependency files =====
 *.obj
@@ -57,4 +60,12 @@ external/**/obj/
 # ===== Temporary test binaries =====
 test_*
 *_test
+!test_*.c
 
+# ===== CMock / Unit Testing =====
+test/mocks/*
+!test/mocks/.gitkeep
+build/test_suite
+
+#Ruby
+.rake_test_cache

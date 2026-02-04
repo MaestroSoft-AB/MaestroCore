@@ -1,0 +1,12 @@
+---
+:cmock:
+  :mock_path: test/mocks
+  :includes:
+    - maestromodules/tcp_client.h
+  :plugins:
+    - :expect
+    - :ignore
+    - :ignore_arg
+    - :return_thru_ptr
+    - :callback
+  :enforce_strict_ordering: TRUE

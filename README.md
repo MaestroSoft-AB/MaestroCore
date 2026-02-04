@@ -245,3 +245,28 @@ and compile:
 ```bash
 cc main.c -lmaestrocore
 ```
+
+
+---
+
+## Testing
+
+MaestroCore uses **Unity** and **CMock** for unit testing. This allows for testing complex network state machines by mocking the TCP layer.
+
+### Prerequisites
+To run the tests, you need:
+- **GCC/Clang** (C11 support)
+- **Make**
+- **Ruby** (Required by CMock to generate mock objects from headers)
+
+On Ubuntu/Debian:
+```bash
+sudo apt install build-essential ruby
+```
+
+### Running tests
+
+The test suite automatically generates mocks for internal dependencies before compiling the test runner.
+
+```make test```
+

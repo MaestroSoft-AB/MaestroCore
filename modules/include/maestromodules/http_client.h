@@ -16,6 +16,7 @@ typedef enum
 {
   HTTP_CLIENT_INITIALIZING,
   HTTP_CLIENT_CONNECTING,
+  HTTP_CLIENT_WAITING_CONNECT,
   HTTP_CLIENT_BUILDING_REQUEST,
   HTTP_CLIENT_SENDING_REQUEST,
   HTTP_CLIENT_READING_FIRSTLINE,
@@ -30,6 +31,12 @@ typedef enum
 } HTTPClientState;
 
 typedef void (*http_client_on_success)(void* _context, char** _response);
+
+typedef struct
+{
+  uint8_t* data;
+  ssize_t size;
+} http_data;
 
 typedef struct
 {
@@ -59,6 +66,7 @@ typedef struct
   uint8_t* request_buffer;
   uint8_t* response_buffer;
   uint8_t* decoded_body; // Might be too small
+  http_data* blocking_out;
 
   int request_length;
   int bytes_received;
@@ -66,12 +74,21 @@ typedef struct
   int content_length;
   int chunked;
   int chunk_remaining;
+  int timeout_ms;
 
   HTTPClientState state;
+  HTTPMethod method;
 
+  bool blocking_mode;
   bool tls;
 
 } HTTP_Client;
+
+/*Blocking API calls*/
+/*_out is allocated in this client but needs to be free'd by caller*/
+int http_blocking_get(const char* _url, http_data* _out, int _timeout_ms);
+int http_blocking_post(const char* _url, const http_data* in, http_data* out, int _timeout_ms);
+/**/
 
 int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _method,
                          http_client_on_success _on_success, void* _context, char** _response_out);
