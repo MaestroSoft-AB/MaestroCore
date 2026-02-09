@@ -8,7 +8,7 @@
 #include <maestromodules/linked_list.h>
 #include <maestroutils/HTTPStatusCodes.h>
 #include <maestroutils/error.h>
-#include <maestroutils/misc_utils.h>
+#include <maestroutils/string_utils.h>
 
 #include <ctype.h>
 #include <errno.h>
