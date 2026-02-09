@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include <limits.h>
-#include <maestroutils/misc_utils.h>
+#include <maestroutils/string_utils.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -91,4 +91,12 @@ int parse_string_to_int(const char* _str, int* _int)
   *_int = (int)val;
 
   return 0;
+}
+
+bool char_is_number(const char _c)
+{
+  int i;
+  for (i = 0; i < 10; i++)
+    if ((int)_c == i+48) return true;
+  return false;
 }

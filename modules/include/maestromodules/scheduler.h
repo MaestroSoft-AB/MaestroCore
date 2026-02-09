@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include <maestroutils/error.h>
-#include <maestroutils/misc_utils.h>
 #include <maestroutils/time_utils.h>
 
 #ifndef SCHEDULER_MAX_TASKS
