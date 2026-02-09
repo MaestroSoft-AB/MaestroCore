@@ -270,3 +270,18 @@ The test suite automatically generates mocks for internal dependencies before co
 
 ```make test```
 
+
+
+// HOW TO BUILD \\
+FULL PROJECT:
+cmake -DBUILD_MODULES=ON -DBUILD_UTILS=ON -DBUILD_TESTS=ON ..
+
+ONLY MODULES:
+cmake -DBUILD_MODULES=ON ..
+
+ONLY UTILS:
+cmake -DBUILD_UTILS=ON ..
+
+
+MODULES WITHOUT TESTS:
+cmake -DBUILD_MODULES=ON -DBUILD_TESTS=OFF ..
