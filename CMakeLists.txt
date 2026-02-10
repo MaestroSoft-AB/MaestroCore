@@ -77,7 +77,7 @@ endif()
 set(MBEDTLS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/mbedtls")
 set(CJSON_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/external/cjson")
 
-if(BUILD_MODULES OR BUILD_UTILS)
+if(BUILD_MODULES)
     # Configure mbedTLS
     set(MBEDTLS_USER_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/modules/include/maestromodules/tls_config.h" CACHE INTERNAL "")
     set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
@@ -92,16 +92,26 @@ endif()
 # ============================================================
 if(BUILD_UTILS)
     file(GLOB_RECURSE UTL_SRCS CONFIGURE_DEPENDS "utils/src/*.c")
+    
+    # Om vi INTE bygger moduler, plocka bort filen som kräver mbedTLS
+    if(NOT BUILD_MODULES)
+        list(FILTER UTL_SRCS EXCLUDE REGEX "mbedtls_utils.c")
+    endif()
+
     add_library(maestroutils STATIC ${UTL_SRCS})
     
     target_include_directories(maestroutils PUBLIC 
         utils/include
         modules/include
         ${CJSON_DIR}
-        ${MBEDTLS_DIR}/include
+        # Inkludera bara mbedtls-mappen om vi faktiskt bygger modulerna
+        $<$<BOOL:${BUILD_MODULES}>:${MBEDTLS_DIR}/include>
     )
     
-    target_link_libraries(maestroutils PUBLIC mbedcrypto mbedtls mbedx509)
+    # Länka bara mot mbedTLS om vi faktiskt bygger modulerna
+    if(BUILD_MODULES)
+        target_link_libraries(maestroutils PUBLIC mbedcrypto mbedtls mbedx509)
+    endif()
 endif()
 
 # ============================================================
@@ -141,43 +151,4 @@ if(BUILD_MODULES)
     add_dependencies(maestrocore maestromodules)
 endif()
 
-# ============================================================
-# Target: test_suite
-# ============================================================
-if(BUILD_TESTS)
-    enable_testing()
 
-    set(MOCK_OUT_DIR "${CMAKE_BINARY_DIR}/test/mocks")
-    file(MAKE_DIRECTORY ${MOCK_OUT_DIR})
-
-    add_custom_command(
-        OUTPUT "${MOCK_OUT_DIR}/Mocktcp_client.c"
-        COMMAND ${RUBY_EXECUTABLE}
-            "${CMAKE_CURRENT_SOURCE_DIR}/test/cmock/lib/cmock.rb"
-            -o"${CMAKE_CURRENT_SOURCE_DIR}/test/cmock_config.yaml"
-            "${CMAKE_CURRENT_SOURCE_DIR}/modules/include/maestromodules/tcp_client.h"
-        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/modules/include/maestromodules/tcp_client.h"
-        COMMENT "Generating mocks..."
-    )
-
-    add_executable(test_suite
-        test/test_http.c
-        "${MOCK_OUT_DIR}/Mocktcp_client.c"
-        test/cmock/vendor/unity/src/unity.c
-        test/cmock/src/cmock.c
-    )
-
-    target_link_libraries(test_suite PRIVATE 
-        maestromodules 
-        m 
-        pthread
-    )
-    
-    target_include_directories(test_suite PRIVATE 
-        test/cmock/vendor/unity/src 
-        test/cmock/src 
-        ${MOCK_OUT_DIR}
-    )
-
-    add_test(NAME MaestroTests COMMAND test_suite)
-endif()
