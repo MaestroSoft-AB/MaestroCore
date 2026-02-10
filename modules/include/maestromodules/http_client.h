@@ -7,7 +7,7 @@
 #include <maestromodules/scheduler.h>
 #include <maestromodules/tcp_client.h>
 #include <maestroutils/error.h>
-#include <maestroutils/http_parser.h>
+#include <maestromodules/http_parser.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -35,7 +35,7 @@ typedef void (*http_client_on_success)(void* _context, char** _response);
 typedef struct
 {
   uint8_t* data;
-  ssize_t size;
+  ssize_t  size;
 } http_data;
 
 typedef struct
@@ -55,18 +55,18 @@ typedef struct
   size_t bytes_sent;
   size_t decoded_body_len;
 
-  Scheduler_Task* task;
-  TCP_Client tcp_client;
-  const char* URL;
-  HTTP_Request* req;
-  HTTP_Response* resp;
+  Scheduler_Task*        task;
+  TCP_Client             tcp_client;
+  const char*            URL;
+  HTTP_Request*          req;
+  HTTP_Response*         resp;
   http_client_on_success on_success;
-  void* context;
-  char** response_out;
-  uint8_t* request_buffer;
-  uint8_t* response_buffer;
-  uint8_t* decoded_body; // Might be too small
-  http_data* blocking_out;
+  void*                  context;
+  char**                 response_out;
+  uint8_t*               request_buffer;
+  uint8_t*               response_buffer;
+  uint8_t*               decoded_body; // Might be too small
+  http_data*             blocking_out;
 
   int request_length;
   int bytes_received;
@@ -77,7 +77,7 @@ typedef struct
   int timeout_ms;
 
   HTTPClientState state;
-  HTTPMethod method;
+  HTTPMethod      method;
 
   bool blocking_mode;
   bool tls;
@@ -90,8 +90,8 @@ int http_blocking_get(const char* _url, http_data* _out, int _timeout_ms);
 int http_blocking_post(const char* _url, const http_data* in, http_data* out, int _timeout_ms);
 /**/
 
-int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _method,
-                         http_client_on_success _on_success, void* _context, char** _response_out);
+int  http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _method,
+                          http_client_on_success _on_success, void* _context, char** _response_out);
 void http_client_dispose(HTTP_Client* _Client);
 
 #endif // HTTPClient_h

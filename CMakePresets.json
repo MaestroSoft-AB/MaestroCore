@@ -1,0 +1,62 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "full",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "utils",
+      "displayName": "Build only Utils",
+      "inherits": "full",
+      "cacheVariables": {
+        "BUILD_MODULES": "OFF",
+        "BUILD_UTILS": "ON",
+        "BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "modules",
+      "displayName": "Build only Modules",
+      "inherits": "full",
+      "cacheVariables": {
+        "BUILD_MODULES": "ON",
+        "BUILD_UTILS": "OFF",
+        "BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "test",
+      "displayName": "Build everything with tests",
+      "inherits": "full",
+      "cacheVariables": {
+        "BUILD_MODULES": "ON",
+        "BUILD_UTILS": "ON",
+        "BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "utils",
+      "configurePreset": "utils",
+      "targets": ["maestroutils"]
+    },
+    {
+      "name": "modules",
+      "configurePreset": "modules",
+      "targets": ["maestromodules"]
+    },
+    {
+      "name": "core",
+      "configurePreset": "test",
+      "targets": ["maestrocore"]
+    }
+  ]
+}
