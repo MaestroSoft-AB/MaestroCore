@@ -11,26 +11,64 @@ option(BUILD_UTILS   "Build utils library" ON)
 option(BUILD_TESTS   "Build unit tests" OFF)
 
 # ============================================================
-# Dependencies: Python & Ruby (Behåll din befintliga logik)
-# ============================================================
-# ============================================================
 # Python Venv & Dependencies Setup
 # ============================================================
 if(BUILD_MODULES OR BUILD_TESTS)
+
+    # Find any system python first (needed to create venv)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
-    
+
     set(VENV_DIR "${CMAKE_BINARY_DIR}/python_venv")
-    
-    # Skapa venv och installera paket om de saknas
-    if(NOT EXISTS "${VENV_DIR}")
-        message(STATUS "Creating Python venv and installing mbedTLS dependencies...")
-        execute_process(COMMAND ${Python3_EXECUTABLE} -m venv ${VENV_DIR})
-        execute_process(COMMAND ${VENV_DIR}/bin/pip install jsonschema jinja2)
+    set(VENV_PYTHON "${VENV_DIR}/bin/python")
+
+    # --------------------------------------------------------
+    # Create venv if missing
+    # --------------------------------------------------------
+    if(NOT EXISTS "${VENV_PYTHON}")
+        message(STATUS "Creating Python virtual environment...")
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} -m venv ${VENV_DIR}
+            RESULT_VARIABLE venv_result
+        )
+        if(NOT venv_result EQUAL 0)
+            message(FATAL_ERROR "Failed to create Python virtual environment")
+        endif()
     endif()
 
-    # TVINGA CMake och MbedTLS att använda venv:ns python
-    set(Python3_EXECUTABLE "${VENV_DIR}/bin/python3" CACHE FILEPATH "" FORCE)
-    set(PYTHON_EXECUTABLE "${VENV_DIR}/bin/python3" CACHE FILEPATH "" FORCE)
+    # --------------------------------------------------------
+    # Ensure pip exists (portable solution, no apt needed)
+    # --------------------------------------------------------
+    execute_process(
+        COMMAND ${VENV_PYTHON} -m pip --version
+        RESULT_VARIABLE PIP_MISSING
+        OUTPUT_QUIET ERROR_QUIET
+    )
+
+    if(PIP_MISSING)
+        message(STATUS "pip missing -> bootstrapping via ensurepip")
+        execute_process(
+            COMMAND ${VENV_PYTHON} -m ensurepip --upgrade
+            RESULT_VARIABLE ensurepip_result
+        )
+        if(NOT ensurepip_result EQUAL 0)
+            message(FATAL_ERROR "Failed to bootstrap pip using ensurepip")
+        endif()
+    endif()
+
+    # --------------------------------------------------------
+    # Install dependencies (safe if already installed)
+    # --------------------------------------------------------
+    message(STATUS "Installing Python dependencies...")
+    execute_process(COMMAND ${VENV_PYTHON} -m pip install --upgrade pip)
+    execute_process(COMMAND ${VENV_PYTHON} -m pip install jsonschema jinja2 pyyaml)
+
+    # --------------------------------------------------------
+    # Force entire project + subprojects to use venv python
+    # --------------------------------------------------------
+    set(Python3_EXECUTABLE ${VENV_PYTHON} CACHE FILEPATH "Python in venv" FORCE)
+    set(PYTHON_EXECUTABLE  ${VENV_PYTHON} CACHE FILEPATH "Python in venv" FORCE)
+
+    message(STATUS "Python set to: ${Python3_EXECUTABLE}")
 endif()
 
 # ============================================================
@@ -40,7 +78,7 @@ set(MBEDTLS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/mbedtls")
 set(CJSON_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/external/cjson")
 
 if(BUILD_MODULES OR BUILD_UTILS)
-    # Konfigurera mbedTLS
+    # Configure mbedTLS
     set(MBEDTLS_USER_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/modules/include/maestromodules/tls_config.h" CACHE INTERNAL "")
     set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
     set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
@@ -63,7 +101,6 @@ if(BUILD_UTILS)
         ${MBEDTLS_DIR}/include
     )
     
-    # Om mbedtls_utils.c anropar mbedtls-funktioner måste vi länka här också
     target_link_libraries(maestroutils PUBLIC mbedcrypto mbedtls mbedx509)
 endif()
 
@@ -73,7 +110,6 @@ endif()
 if(BUILD_MODULES)
     file(GLOB_RECURSE MOD_SRCS CONFIGURE_DEPENDS "modules/src/*.c")
     
-    # Bygg modulerna och inkludera cJSON källkoden
     add_library(maestromodules STATIC ${MOD_SRCS} ${CJSON_DIR}/cJSON.c)
     
     target_include_directories(maestromodules PUBLIC 
@@ -85,7 +121,6 @@ if(BUILD_MODULES)
 
     target_compile_definitions(maestromodules PUBLIC MAESTROUTILS_WITH_CJSON)
 
-    # Modulerna behöver utils och mbedtls
     target_link_libraries(maestromodules PUBLIC 
         maestroutils 
         mbedtls 
@@ -132,7 +167,6 @@ if(BUILD_TESTS)
         test/cmock/src/cmock.c
     )
 
-    # ALLT som rör test_suite MÅSTE ligga här inne
     target_link_libraries(test_suite PRIVATE 
         maestromodules 
         m 
