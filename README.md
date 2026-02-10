@@ -273,15 +273,29 @@ The test suite automatically generates mocks for internal dependencies before co
 
 
 // HOW TO BUILD \\
-FULL PROJECT:
-cmake -DBUILD_MODULES=ON -DBUILD_UTILS=ON -DBUILD_TESTS=ON ..
 
-ONLY MODULES:
-cmake -DBUILD_MODULES=ON ..
+STEP 1: FIRST TIME SETUP (CONFIGURATION) - You only need to run this once, or when you want to change what is enabled:
 
-ONLY UTILS:
-cmake -DBUILD_UTILS=ON ..
+EVERYTHING ON:
+cmake --preset config-full
+
+UTILS ONLY (VERY FAST):
+cmake --preset config-utils
+
+UTILS + MODULES:
+cmake --preset config-modules
 
 
-MODULES WITHOUT TESTS:
-cmake -DBUILD_MODULES=ON -DBUILD_TESTS=OFF ..
+STEP 2: BUILDING - Now you can build exactly what you need from the root:
+
+BUILD EVERYTHING:
+cmake --build --preset full
+
+BUILD ONLY UTILS:
+cmake --build --preset utils
+
+BUILD ONLY MODULES:
+cmake --build --preset modules
+
+BUILD TEST SUITE:
+cmake --build --preset test

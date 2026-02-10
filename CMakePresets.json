@@ -2,7 +2,7 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "full",
+      "name": "base",
       "hidden": true,
       "binaryDir": "${sourceDir}/build",
       "generator": "Unix Makefiles",
@@ -12,51 +12,65 @@
       }
     },
     {
-      "name": "utils",
-      "displayName": "Build only Utils",
-      "inherits": "full",
+      "name": "config-full",
+      "displayName": "Full Configuration (All enabled)",
+      "inherits": "base",
       "cacheVariables": {
-        "BUILD_MODULES": "OFF",
         "BUILD_UTILS": "ON",
-        "BUILD_TESTS": "OFF"
-      }
-    },
-    {
-      "name": "modules",
-      "displayName": "Build only Modules",
-      "inherits": "full",
-      "cacheVariables": {
         "BUILD_MODULES": "ON",
-        "BUILD_UTILS": "OFF",
-        "BUILD_TESTS": "OFF"
-      }
-    },
-    {
-      "name": "test",
-      "displayName": "Build everything with tests",
-      "inherits": "full",
-      "cacheVariables": {
-        "BUILD_MODULES": "ON",
-        "BUILD_UTILS": "ON",
         "BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "config-utils",
+      "displayName": "Utils Only Configuration",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_UTILS": "ON",
+        "BUILD_MODULES": "OFF",
+        "BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "config-modules",
+      "displayName": "Modules Only Configuration",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_UTILS": "ON",
+        "BUILD_MODULES": "ON",
+        "BUILD_TESTS": "OFF"
       }
     }
   ],
   "buildPresets": [
     {
+      "name": "full",
+      "configurePreset": "config-full",
+      "description": "Builds everything including tests"
+    },
+    {
       "name": "utils",
-      "configurePreset": "utils",
-      "targets": ["maestroutils"]
+      "configurePreset": "config-utils",
+      "targets": [
+        "maestroutils"
+      ],
+      "description": "Builds only the utility library"
     },
     {
       "name": "modules",
-      "configurePreset": "modules",
-      "targets": ["maestromodules"]
+      "configurePreset": "config-modules",
+      "targets": [
+        "maestromodules"
+      ],
+      "description": "Builds modules and their dependencies"
     },
     {
-      "name": "core",
-      "configurePreset": "test",
-      "targets": ["maestrocore"]
+      "name": "test",
+      "configurePreset": "config-full",
+      "targets": [
+        "test_suite"
+      ],
+      "description": "Builds and prepares the test suite"
     }
   ]
 }
