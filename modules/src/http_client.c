@@ -679,6 +679,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
     // Read again
     uint8_t buf[1024];
 
+
     int bytes_read = tcp_client_read_simple(TCP_C, buf, sizeof(buf));
 
     if (bytes_read < 0) {

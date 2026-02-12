@@ -16,9 +16,10 @@ typedef struct
   const char* scheme;
 
 
-  void* client;
+  void* client; // TLS or TCP
   int   timeout_ms;
   bool  use_tls;
+  bool  use_blocking;
 
 } Transport;
 
@@ -33,7 +34,7 @@ typedef struct
  */
 
 int transport_init(Transport* t, const char* host, const char* port, const char* scheme,
-                   int timeout_ms);
+                   int timeout_ms, bool use_blocking);
 /*
  *Create connection.
  *Returns:
@@ -41,7 +42,7 @@ int transport_init(Transport* t, const char* host, const char* port, const char*
  *  ERR_IN_PROGRESS
  *  error codes
  */
-int transport_connect(Transport* _Transport);
+int transport_finish_connect(Transport* _Transport);
 /*
  * Non-blocking read.
  * Returns:
@@ -63,6 +64,7 @@ int transport_write(Transport* _Transport, const uint8_t* buf, size_t len);
 /*
  * Close and cleanup.
  */
-void transport_dispose(Transport* _Transport);
+void transport_dispose(Transport* _Transport); // Allocated by http_client, needs to be disposed
+                                               // when http_client disposes
 
 #endif

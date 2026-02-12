@@ -81,7 +81,8 @@ typedef struct
 
   bool blocking_mode;
   bool tls;
-
+  /******************************************************* ADD BUFFER AND BUFFER SIZE TO REPLACE TCP
+   * BUFFER AND SIZE FOR READING & WRITING *****************************************************/
 } HTTP_Client;
 
 /*Blocking API calls*/
