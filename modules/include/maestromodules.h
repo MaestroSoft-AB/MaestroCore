@@ -7,3 +7,4 @@
 #include <maestromodules/http_parser.h>
 #include <maestromodules/linked_list.h>
 #include <maestromodules/tcp_client.h>
+#include <maestromodules/transport.h>
