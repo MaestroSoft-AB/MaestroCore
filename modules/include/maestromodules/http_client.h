@@ -5,7 +5,6 @@
 #define HTTPClient_h
 
 #include <maestromodules/scheduler.h>
-#include <maestromodules/tcp_client.h>
 #include <maestroutils/error.h>
 #include <maestromodules/http_parser.h>
 #include <maestromodules/transport.h>
@@ -56,7 +55,6 @@ typedef struct
   size_t decoded_body_len;
 
   Scheduler_Task*        task;
-  TCP_Client             tcp_client;
   const char*            URL;
   HTTP_Request*          req;
   HTTP_Response*         resp;
@@ -67,7 +65,7 @@ typedef struct
   uint8_t*               response_buffer;
   uint8_t*               decoded_body; // Might be too small
   http_data*             data;
-  Transport*             client;
+  Transport              transport;
 
   int request_length;
   int bytes_received;
