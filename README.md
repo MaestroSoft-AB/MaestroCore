@@ -299,3 +299,7 @@ cmake --build --preset modules
 
 BUILD TEST SUITE:
 cmake --build --preset test
+
+To run tests:
+cmake --build --preset tests
+ctest --preset unit-tests

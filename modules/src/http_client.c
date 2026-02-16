@@ -1,7 +1,7 @@
 #include "error.h"
 #include <maestromodules/http_client.h>
 #include <maestromodules/tcp_client.h>
-#include <maestroutils/misc_utils.h>
+#include <maestroutils/string_utils.h>
 #include <stddef.h>
 
 void            http_client_taskwork(void* _context, uint64_t _montime);

@@ -65,7 +65,7 @@
       "description": "Builds modules and their dependencies"
     },
     {
-      "name": "test",
+      "name": "tests",
       "configurePreset": "config-full",
       "targets": [
         "test_suite"
