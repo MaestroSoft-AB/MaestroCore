@@ -37,7 +37,7 @@ CMOCK_LIB    := $(CMOCK_DIR)/lib/cmock.rb
 MOCK_OUT_DIR := $(TEST_DIR)/mocks
 
 # --- Optional cJSON vendor/submodule ---
-CJSON_DIR ?= external/cjson
+CJSON_DIR ?= ../cJSON
 CJSON_SRC := $(CJSON_DIR)/cJSON.c
 CJSON_INC := $(CJSON_DIR)
 

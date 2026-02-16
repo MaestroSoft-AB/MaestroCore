@@ -55,7 +55,12 @@ int curl_get_response(Curl_Data* _Data, const char* _url)
   _Data->size = 0; /* We will reallocate memory to it in write_memory(), for now 0 data */
 
   curl = curl_easy_init();
+  if (!curl) {
+    fprintf(stderr, "curl_easy_init failed\n");
+    return -1;
+  }
 
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
   curl_easy_setopt(curl, CURLOPT_URL, _url);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)_Data);
@@ -74,8 +79,8 @@ int curl_get_response(Curl_Data* _Data, const char* _url)
     return -1;
   } else {
 #ifdef DEBUG
-    printf("Response addr:\n%s\n", data.addr);
-    printf("Response size:\n%lu\n", (unsigned long)data.size);
+    printf("Response addr:\n%s\n", _Data->addr);
+    printf("Response size:\n%lu\n", (unsigned long)_Data->size);
 #endif
   }
 

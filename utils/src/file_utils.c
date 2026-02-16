@@ -69,7 +69,6 @@ int write_string_to_file(const char* _str, const char* _filename)
 /** Heap allocated */
 char* read_file_to_string(const char* _filename)
 {
-
   FILE* file = fopen(_filename, "r");
   if (!file) {
     fprintf(stderr, "File load error: %s\n", _filename);
