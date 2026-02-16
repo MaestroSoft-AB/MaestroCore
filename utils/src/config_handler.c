@@ -18,6 +18,22 @@ static void trim(char* s)
   }
 }
 
+static void strip_inline_comment(char* s)
+{
+  if (!s) {
+    return;
+  }
+
+  /* Treat a '#' as a comment delimiter only when it's at the start
+     or preceded by whitespace, so values like "abc#def" remain intact. */
+  for (size_t i = 0; s[i] != 0; i++) {
+    if (s[i] == '#' && (i == 0 || isspace((unsigned char)s[i - 1]))) {
+      s[i] = 0;
+      break;
+    }
+  }
+}
+
 int config_get_value(const char* config_path,
                      const char* keys[],
                      char* values[],
@@ -54,6 +70,8 @@ int config_get_value(const char* config_path,
     char* value = eq + 1;
 
     trim(key);
+    trim(value);
+    strip_inline_comment(value);
     trim(value);
 
     for (size_t i = 0; i < key_count; i++) {
