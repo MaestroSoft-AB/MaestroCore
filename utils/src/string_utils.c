@@ -1,13 +1,14 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include <limits.h>
-#include <maestroutils/misc_utils.h>
 #include <maestroutils/error.h>
+#include <maestroutils/string_utils.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <errno.h>
 
 /* Concatenates two strings using malloc, strcpy and strcat
  * (goes without saying but needs to be freed by caller) */
@@ -121,4 +122,13 @@ ssize_t buffer_append(void** base_ptr, size_t* current_size, const void* input, 
   ((uint8_t*)*base_ptr)[*current_size] = 0;
 
   return (ssize_t)input_len;
+}
+
+bool char_is_number(const char _c)
+{
+  int i;
+  for (i = 0; i < 10; i++)
+    if ((int)_c == i + 48)
+      if ((int)_c == i + 48)
+        return true;
 }

@@ -55,15 +55,56 @@ uint64_t SystemMonotonicMS()
   return result;
 }
 
-/* Helper for parsing iso8601 formatted datetime string to time_t epoch */
+/** Return amount of offset hours local time is from UTC */
+/* WARNING: NOT TESTED, MIGHT BE SHIT */
+int utc_offset_hours()
+{
+  time_t now = time(NULL);
+  struct tm* utc = gmtime(&now);     // UTC broken-down time
+  utc->tm_isdst = -1;                // Let mktime determine DST
+  time_t local_stamp = mktime(utc);  // Interpret UTC as local
+  double hours_offset = difftime(now, local_stamp) / 3600.0;
+  return (int)hours_offset;
+}
+
+/* Helper for parsing iso formatted datetime string to time_t epoch
+ * Format: "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d" */
+time_t parse_iso_full_datetime_string_to_epoch(const char* _time_str)
+{
+  struct tm tm = {0};
+  int year, month, day, hour, min, sec, utc_hour, utc_min;
+  char utc_direction;
+
+  if (sscanf(_time_str, "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d", &year, &month, &day, &hour, &min, &sec, &utc_direction, &utc_hour, &utc_min) != 9)
+    return (time_t)-1;
+  
+
+  if (utc_direction == '+')
+    tm.tm_hour = hour - utc_hour;
+  else if (utc_direction == '-')
+    tm.tm_hour = hour + utc_hour;
+  else // incorrect string
+    return (time_t)-1;
+
+  tm.tm_year = year - 1900; /* struct tm years since 1900 */
+  tm.tm_mon = month - 1;    /* struct tm months are zero-based */
+  tm.tm_mday = day;
+  tm.tm_min = min;
+  tm.tm_sec = sec;
+  tm.tm_isdst = -1; /* Not considering daylight saving time */
+
+  return timegm(&tm);
+}
+
+/* Helper for parsing iso8601 formatted datetime string to time_t epoch
+ * Format: "%04d-%02d-%02dT%02d:%02d%c%02d:%02d" */
 time_t parse_iso_datetime_string_to_epoch(const char* _time_str)
 {
   struct tm tm = {0};
   int year, month, day, hour, min;
 
-  if (sscanf(_time_str, "%4d-%2d-%2dT%2d:%2d", &year, &month, &day, &hour, &min) != 5) {
+  if (sscanf(_time_str, "%4d-%2d-%2dT%2d:%2d", &year, &month, &day, &hour, &min) != 5)
     return (time_t)-1;
-  }
 
   tm.tm_year = year - 1900; /* struct tm years since 1900 */
   tm.tm_mon = month - 1;    /* struct tm months are zero-based */
@@ -75,8 +116,40 @@ time_t parse_iso_datetime_string_to_epoch(const char* _time_str)
   return timegm(&tm);
 }
 
-/* Helper for parsing time_t epoch to iso8601 formatted datetime string
- * uses strdup, i.e return value needs to be freed from heap by caller */
+/* Helper for parsing time_t epoch to iso formatted datetime string
+ * Uses strdup, i.e return value needs to be freed from heap by caller
+ * Format: "%04d-%02d-%02dT%02d:%02d" */
+/* WARNING: NOT TESTED, MIGHT BE SHIT */
+const char* parse_epoch_to_iso_full_datetime_string(time_t* _epoch, int _offset_hours)
+{
+  struct tm* tm = gmtime(_epoch);
+  if (!tm)
+    return strdup("Invalid datetime");
+
+  if (_offset_hours > 12 || _offset_hours < -12)
+    return strdup("Invalid UTC offset");
+
+  int utc_hour = _offset_hours;
+  int utc_sec = 0;
+  char utc_direction = (utc_hour < 0) ? '-' : '+';
+
+  int year = tm->tm_year + 1900;
+  int month = tm->tm_mon + 1;
+  int day = tm->tm_mday;
+  int hour = tm->tm_hour;
+  int min = tm->tm_min;
+  int sec = tm->tm_sec;
+
+  char iso_string[26];
+  if (snprintf(iso_string, 26, "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d", year, month, day, hour, min, sec, utc_direction, utc_hour, utc_sec) < 0)
+    return strdup("Invalid datetime");
+  
+  return strdup(iso_string);
+}
+
+/* Helper for parsing time_t epoch to iso formatted datetime string
+ * Uses strdup, i.e return value needs to be freed from heap by caller
+ * Format: "%04d-%02d-%02dT%02d:%02d" */
 const char* parse_epoch_to_iso_datetime_string(time_t* _epoch)
 {
   struct tm* tm = gmtime(_epoch);
@@ -90,8 +163,54 @@ const char* parse_epoch_to_iso_datetime_string(time_t* _epoch)
   int min = tm->tm_min;
 
   char iso_string[17];
-  if (snprintf(iso_string, 17, "%04d-%02d-%02dT%02d:%02d", year, month, day, hour, min) < 0) {
+  if (snprintf(iso_string, 17, "%04d-%02d-%02dT%02d:%02d", year, month, day, hour, min) < 0)
     return strdup("Invalid datetime");
-  }
+
   return strdup(iso_string);
+}
+
+/* Helper for parsing time_t epoch to iso8601 formatted datetime string
+ * Uses strdup, i.e return value needs to be freed from heap by caller
+ * Format: "%04d-%02d-%02dT%02d:%02d%c%02d:%02d"
+ * Takes hours before/after UTC as second arg */
+
+bool time_is_at_or_after_hour(int _hour) 
+{
+    time_t now = time(NULL);
+    struct tm local;
+    localtime_r(&now, &local);
+
+    return (local.tm_hour > _hour) ||
+           (local.tm_hour == _hour && local.tm_min >= 0);
+}
+
+time_t epoch_now_day()
+{
+  time_t now = time(NULL);
+  struct tm* today = gmtime(&now);
+
+  today->tm_hour = 0;
+  today->tm_min = 0;
+  today->tm_sec = 0;
+
+  return timegm(today);
+}
+time_t epoch_now_hour()
+{
+  time_t now = time(NULL);
+  struct tm* today = gmtime(&now);
+
+  today->tm_min = 0;
+  today->tm_sec = 0;
+
+  return timegm(today);
+}
+time_t epoch_now_min()
+{
+  time_t now = time(NULL);
+  struct tm* today = gmtime(&now);
+
+  today->tm_sec = 0;
+
+  return timegm(today);
 }
