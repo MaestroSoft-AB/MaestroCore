@@ -1,6 +1,7 @@
 #include "error.h"
 #include <maestromodules/http_client.h>
 #include <maestromodules/tcp_client.h>
+#include <maestroutils/misc_utils.h>
 #include <stddef.h>
 
 void            http_client_taskwork(void* _context, uint64_t _montime);
@@ -84,7 +85,7 @@ int http_blocking_get(const char* _url, http_data* _out, int _timeout_ms)
     return ERR_INVALID_ARG;
   }
 
-  _out->data = NULL;
+  _out->addr = NULL;
   _out->size = 0;
 
   return http_blocking_work(_url, HTTP_GET, NULL, _out, _timeout_ms);
@@ -97,7 +98,7 @@ int http_blocking_post(const char* _url, const http_data* _in, http_data* _out, 
   }
 
   if (_out) {
-    _out->data = NULL;
+    _out->addr = NULL;
     _out->size = 0;
   }
 
@@ -125,18 +126,18 @@ static int http_blocking_work(const char* _url, HTTPMethod _method, const http_d
 
   c->method = _method;
 
-  if (_in_body && _in_body->data && _in_body->size > 0) {
+  if (_in_body && _in_body->addr && _in_body->size > 0) {
     c->req->body = malloc(_in_body->size);
     if (!c->req->body) {
       http_client_dispose(c);
       return ERR_NO_MEMORY;
     }
-    memcpy(c->req->body, _in_body->data, _in_body->size);
+    memcpy(c->req->body, _in_body->addr, _in_body->size);
     c->req->body_len = (size_t)_in_body->size;
   }
 
-  c->blocking_out = _out_body;
-  c->state        = HTTP_CLIENT_CONNECTING;
+  c->data  = _out_body;
+  c->state = HTTP_CLIENT_CONNECTING;
 
   uint64_t start = SystemMonotonicMS();
 
@@ -428,7 +429,8 @@ HTTPClientState http_client_worktask_read_firstline(HTTP_Client* _Client)
     printf("Connection closed by peer\n");
     return HTTP_CLIENT_ERROR;
   }
-  ssize_t bytes_stored = tcp_client_realloc_data(&TCP_C->data, tcp_buf, (size_t)bytes_read);
+  ssize_t bytes_stored =
+      buffer_append((void**)&TCP_C->data.addr, &TCP_C->data.size, tcp_buf, (size_t)bytes_read);
 
   if (bytes_stored < 0) {
     return HTTP_CLIENT_ERROR;
@@ -860,7 +862,7 @@ HTTPClientState http_client_worktask_returning(HTTP_Client* _Client)
     src_len = _Client->tcp_client.data.size;
   }
 
-  if (_Client->blocking_out) {
+  if (_Client->data) {
     uint8_t* buf = malloc(src_len + 1);
     if (!buf) {
       return HTTP_CLIENT_ERROR;
@@ -869,9 +871,9 @@ HTTPClientState http_client_worktask_returning(HTTP_Client* _Client)
     if (src_len) {
       memcpy(buf, src, src_len);
     }
-    buf[src_len]                = '\0';
-    _Client->blocking_out->data = buf;
-    _Client->blocking_out->size = (ssize_t)src_len;
+    buf[src_len]        = '\0';
+    _Client->data->addr = buf;
+    _Client->data->size = (ssize_t)src_len;
     return HTTP_CLIENT_DISPOSING;
   }
 

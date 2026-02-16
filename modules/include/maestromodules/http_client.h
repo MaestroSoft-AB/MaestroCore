@@ -8,7 +8,7 @@
 #include <maestromodules/tcp_client.h>
 #include <maestroutils/error.h>
 #include <maestromodules/http_parser.h>
-
+#include <maestromodules/transport.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -34,7 +34,7 @@ typedef void (*http_client_on_success)(void* _context, char** _response);
 
 typedef struct
 {
-  uint8_t* data;
+  uint8_t* addr;
   ssize_t  size;
 } http_data;
 
@@ -66,7 +66,8 @@ typedef struct
   uint8_t*               request_buffer;
   uint8_t*               response_buffer;
   uint8_t*               decoded_body; // Might be too small
-  http_data*             blocking_out;
+  http_data*             data;
+  Transport*             client;
 
   int request_length;
   int bytes_received;

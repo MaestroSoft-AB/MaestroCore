@@ -173,10 +173,10 @@ void test_http_get_chunked_success(void)
 
   TEST_ASSERT_EQUAL_INT(0, result);
   TEST_ASSERT_EQUAL_INT(11, out.size);
-  TEST_ASSERT_EQUAL_MEMORY("HELLOWORLD!", out.data, 11);
+  TEST_ASSERT_EQUAL_MEMORY("HELLOWORLD!", out.addr, 11);
 
-  if (out.data)
-    free(out.data);
+  if (out.addr)
+    free(out.addr);
 }
 
 void test_http_get_fragmented_content_length(void)
@@ -194,10 +194,10 @@ void test_http_get_fragmented_content_length(void)
 
   TEST_ASSERT_EQUAL_INT(0, result);
   TEST_ASSERT_EQUAL_INT(10, out.size);
-  TEST_ASSERT_EQUAL_MEMORY("ABCDEFGHIJ", out.data, 10);
+  TEST_ASSERT_EQUAL_MEMORY("ABCDEFGHIJ", out.addr, 10);
 
-  if (out.data)
-    free(out.data);
+  if (out.addr)
+    free(out.addr);
 }
 
 void test_http_get_non_blocking_retries(void)
@@ -215,10 +215,10 @@ void test_http_get_non_blocking_retries(void)
 
   TEST_ASSERT_EQUAL_INT(0, result);
   TEST_ASSERT_EQUAL_INT(4, out.size);
-  TEST_ASSERT_EQUAL_MEMORY("BYE!", out.data, 4);
+  TEST_ASSERT_EQUAL_MEMORY("BYE!", out.addr, 4);
 
-  if (out.data)
-    free(out.data);
+  if (out.addr)
+    free(out.addr);
 }
 
 void test_http_get_resilience_mid_payload(void)
@@ -236,10 +236,10 @@ void test_http_get_resilience_mid_payload(void)
 
   TEST_ASSERT_EQUAL_INT(0, result);
   TEST_ASSERT_EQUAL_INT(4, out.size);
-  TEST_ASSERT_EQUAL_MEMORY("PING", out.data, 4);
+  TEST_ASSERT_EQUAL_MEMORY("PING", out.addr, 4);
 
-  if (out.data)
-    free(out.data);
+  if (out.addr)
+    free(out.addr);
 }
 
 void test_http_post_large_data(void)
@@ -248,7 +248,7 @@ void test_http_post_large_data(void)
   size_t    large_size    = 4096;
   uint8_t*  large_payload = malloc(large_size);
   memset(large_payload, 'Z', large_size);
-  http_data in = {.data = large_payload, .size = (ssize_t)large_size};
+  http_data in = {.addr = large_payload, .size = (ssize_t)large_size};
 
   tcp_client_write_simple_StubWithCallback(tcp_write_simple_stub);
   tcp_client_read_simple_StubWithCallback(tcp_read_valid_chunked_stub);
@@ -263,8 +263,8 @@ void test_http_post_large_data(void)
   TEST_ASSERT_EQUAL_INT(0, result);
 
   free(large_payload);
-  if (out.data)
-    free(out.data);
+  if (out.addr)
+    free(out.addr);
 }
 
 /* --- MAIN --- */

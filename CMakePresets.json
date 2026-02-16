@@ -72,5 +72,19 @@
       ],
       "description": "Builds and prepares the test suite"
     }
+  ],
+  "testPresets": [
+    {
+      "name": "unit-tests",
+      "configurePreset": "config-full",
+      "description": "Runs the test suite using CTest",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
   ]
 }

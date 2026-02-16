@@ -151,4 +151,12 @@ if(BUILD_MODULES)
     add_dependencies(maestrocore maestromodules)
 endif()
 
+# ============================================================
+# Target: Unit Tests
+# ============================================================
+if(BUILD_TESTS)
+    link_directories(${CMAKE_BINARY_DIR}/external/mbedtls/library)
+    enable_testing()
+    add_subdirectory(test)
+endif()
 
