@@ -2,7 +2,7 @@
 
 #ifndef TRANSPORT_H
 #define TRANSPORT_H
-
+#include <maestromodules/tcp_client.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -16,10 +16,10 @@ typedef struct
   const char* scheme;
 
 
-  void* client; // TLS or TCP
-  int   timeout_ms;
-  bool  use_tls;
-  bool  use_blocking;
+  TCP_Client tcp;
+  int        timeout_ms;
+  bool       use_tls;
+  bool       use_blocking;
 
 } Transport;
 

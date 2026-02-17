@@ -14,21 +14,21 @@ int tcp_client_init(TCP_Client* _Client, const char* _Host, const char* _Port)
     return ERR_INVALID_ARG;
   }
 
-  _Client->fd = -1;
-  _Client->readData = NULL;
+  _Client->fd        = -1;
+  _Client->readData  = NULL;
   _Client->writeData = NULL;
   _Client->data.addr = NULL;
 
   struct addrinfo addresses;
   memset(&addresses, 0, sizeof(addresses));
-  addresses.ai_family = AF_UNSPEC;     /* IPv4 & IPv6 */
+  addresses.ai_family   = AF_UNSPEC;   /* IPv4 & IPv6 */
   addresses.ai_socktype = SOCK_STREAM; /* TCP */
   addresses.ai_protocol = IPPROTO_TCP;
 
   int status = ERR_IO;
 
   struct addrinfo* result = NULL;
-  int rc = getaddrinfo(_Host, _Port, &addresses, &result);
+  int              rc     = getaddrinfo(_Host, _Port, &addresses, &result);
   if (rc != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rc));
     return ERR_IO;
@@ -108,28 +108,29 @@ int tcp_client_blocking_init(TCP_Client* _Client, const char* _host, const char*
     return ERR_INVALID_ARG;
   }
 
-  _Client->fd = -1;
-  _Client->readData = NULL;
-  _Client->writeData = NULL;
-  _Client->data.addr = NULL;
+  _Client->fd              = -1;
+  _Client->readData        = NULL;
+  _Client->writeData       = NULL;
+  _Client->data.addr       = NULL;
   _Client->has_remote_addr = 0;
 
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
+  hints.ai_family   = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
-  hints.ai_flags = AI_ADDRCONFIG;
+  hints.ai_flags    = AI_ADDRCONFIG;
 
   struct addrinfo* result = NULL;
 
   int res = getaddrinfo(_host, _port, &hints, &result);
   if (res != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(res));
+    printf("Failed at getaddrinfo\n");
     return ERR_IO;
   }
 
-  int fd = -1;
+  int fd       = -1;
   int last_err = ERR_IO;
 
   for (struct addrinfo* ai = result; ai; ai = ai->ai_next) {
@@ -152,7 +153,7 @@ int tcp_client_blocking_init(TCP_Client* _Client, const char* _host, const char*
     if (cres == 0) {
       // Connected
       last_err = SUCCESS;
-    } else if (cres < 0 && errno == EINPROGRESS) {
+    } else if (cres < 0 && errno == EINPROGRESS || errno == EALREADY) {
       // Connecting, wait for writable
       int wr = tcp_client_wait_writable(fd, _timeout_ms);
       if (wr != SUCCESS) {
@@ -161,8 +162,11 @@ int tcp_client_blocking_init(TCP_Client* _Client, const char* _host, const char*
         // check if connect was successful
         last_err = tcp_client_finish_connect(fd);
       }
+    } else if (cres < 0 && errno == EISCONN) {
+      // Already connected
+      last_err = SUCCESS;
     } else {
-      last_err = ERR_IO;
+      printf("Connect failed\n");
     }
 
     if (last_err == SUCCESS) {
@@ -173,7 +177,7 @@ int tcp_client_blocking_init(TCP_Client* _Client, const char* _host, const char*
 
       if (tcp_client_set_nonblocking(fd, 0) != SUCCESS) {
         close(fd);
-        fd = -1;
+        fd       = -1;
         last_err = ERR_IO;
         continue;
       }
@@ -188,6 +192,7 @@ int tcp_client_blocking_init(TCP_Client* _Client, const char* _host, const char*
   freeaddrinfo(result);
 
   if (_Client->fd < 0) {
+    printf("Clientfd < 0\n");
     return last_err;
   }
   return SUCCESS;
@@ -218,7 +223,7 @@ int tcp_client_wait_writable(int _fd, int _timeout_ms)
   struct pollfd pfd;
 
   memset(&pfd, 0, sizeof(pfd));
-  pfd.fd = _fd;
+  pfd.fd     = _fd;
   pfd.events = POLLOUT | POLLERR | POLLHUP;
 
   int res;
@@ -228,6 +233,7 @@ int tcp_client_wait_writable(int _fd, int _timeout_ms)
   } while (res < 0 && errno == EINTR);
 
   if (res == 0) {
+    printf("wait writable res == 0\n");
     return ERR_TIMEOUT;
   }
   if (res < 0) {
@@ -244,7 +250,7 @@ ssize_t tcp_client_realloc_data(TCP_Data* _Data, void* _input, size_t _size)
   }
 
   ssize_t new_size = _size * sizeof(uint8_t);
-  void* ptr = realloc(
+  void*   ptr      = realloc(
       _Data->addr, _Data->size + new_size +
                        1); // We reallocate memory for our chunk and make a pointer to the new addr
   if (!ptr) {
@@ -274,10 +280,10 @@ int tcp_client_write(TCP_Client* _Client, size_t _Length)
     return ERR_INVALID_ARG;
   }
 
-  size_t bytesLeft = _Length;
-  size_t totalSent = 0;
+  size_t  bytesLeft = _Length;
+  size_t  totalSent = 0;
   ssize_t bytesSent;
-  char* message = _Client->writeData;
+  char*   message = _Client->writeData;
 
   while (bytesLeft > 0) {
 
@@ -345,8 +351,8 @@ int tcp_client_connect_step(TCP_Client* _Client)
 
 int tcp_client_finish_connect(int _fd)
 {
-  int soerr = 0;
-  socklen_t slen = sizeof(soerr);
+  int       soerr = 0;
+  socklen_t slen  = sizeof(soerr);
 
   if (getsockopt(_fd, SOL_SOCKET, SO_ERROR, &soerr, &slen) < 0) {
     return ERR_IO;

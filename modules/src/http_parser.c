@@ -549,6 +549,23 @@ int http_parser_url(const char* _URL, void* _Context)
     url_parts->path[1] = '\0';
   }
 
+  /*---------------------DEFAULT PORT---------------------------*/
+  if (url_parts->port[0] == '\0') {
+    // convert scheme to lowercase for safe comparison
+    char scheme_lower[6] = {0};
+    for (int i = 0; url_parts->scheme[i] && i < 5; i++) {
+      scheme_lower[i] = (char)tolower((unsigned char)url_parts->scheme[i]);
+    }
+
+    if (strcmp(scheme_lower, "https") == 0) {
+      strcpy(url_parts->port, "443");
+    } else if (strcmp(scheme_lower, "http") == 0) {
+      strcpy(url_parts->port, "80");
+    } else {
+      return ERR_BAD_FORMAT;
+    }
+  }
+
   return SUCCESS;
 }
 

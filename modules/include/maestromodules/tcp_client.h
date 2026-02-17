@@ -35,20 +35,20 @@ typedef enum
 typedef struct
 {
   uint8_t* addr; // pointer to data
-  size_t size;   // byte size of data
+  size_t   size; // byte size of data
 
 } TCP_Data;
 
 typedef struct
 {
-  int fd;
+  int   fd;
   char* readData;  /*Allocated in TCP_Client_Read, free'd in dispose*/
   char* writeData; /*Allocated in TCP_Client_Read, free'd in dispose*/
 
-  TCP_Data data;
+  TCP_Data                data;
   struct sockaddr_storage remote_addr;
-  socklen_t remote_addr_len;
-  int has_remote_addr;
+  socklen_t               remote_addr_len;
+  int                     has_remote_addr;
 
 } TCP_Client;
 

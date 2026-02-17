@@ -64,8 +64,11 @@ typedef struct
   uint8_t*               request_buffer;
   uint8_t*               response_buffer;
   uint8_t*               decoded_body; // Might be too small
-  http_data*             data;
-  Transport              transport;
+  http_data*             recv_buf;
+  http_data*             blocking_out;
+
+  http_data resp_buf;
+  Transport transport;
 
   int request_length;
   int bytes_received;

@@ -10,9 +10,15 @@
 int transport_init(Transport* t, const char* host, const char* port, const char* scheme,
                    int timeout_ms, bool use_blocking)
 {
-  if (t == NULL || strlen(host) < 1 || strlen(port) < 1 || strlen(scheme) < 1) {
+  printf("Before nullchecks in transport_init\n");
+
+  if (t == NULL || host == NULL || port == NULL || scheme == NULL || host[0] == '\0' ||
+      port[0] == '\0' || scheme[0] == '\0') {
     return ERR_INVALID_ARG;
   }
+
+  printf("After nullchecks\n");
+
   int  res;
   char scheme_lower[6] = {0};
   t->host              = host;
@@ -27,12 +33,15 @@ int transport_init(Transport* t, const char* host, const char* port, const char*
     scheme_lower[i] = (char)tolower((unsigned char)scheme[i]);
   }
 
-  if (strncmp(scheme_lower, "https", sizeof(scheme_lower)) == 0) {
+  if (strcmp(scheme_lower, "https") == 0) {
     t->use_tls = true;
-  } else {
+  } else if (strcmp(scheme_lower, "http") == 0) {
     t->use_tls = false;
+  } else {
+    return ERR_BAD_FORMAT;
   }
 
+  printf("do we get here?\n");
   if (t->use_tls == true) {
     // cast tls_client
     // init tls_client
@@ -41,11 +50,16 @@ int transport_init(Transport* t, const char* host, const char* port, const char*
 
   if (t->use_tls == false) {
 
-    TCP_Client* tcp = t->client;
-    res             = tcp_client_init(tcp, t->host, t->port);
+    if (t->use_blocking) {
+      res = tcp_client_blocking_init(&t->tcp, t->host, t->port, t->timeout_ms);
+    } else {
+
+      printf("Attempting to init tcp from transport\n");
+      res = tcp_client_init(&t->tcp, t->host, t->port);
+      printf("Result after tcp init: %d\n", res);
+    }
     return res;
   }
-
 
   // If we get here something failed
   return ERR_IO;
@@ -63,8 +77,7 @@ int transport_read(Transport* _Transport, uint8_t* buf, size_t len)
   }
 
   if (_Transport->use_tls == false) {
-    TCP_Client* tcp = _Transport->client;
-    return tcp_client_read_simple(tcp, buf, len);
+    return tcp_client_read_simple(&_Transport->tcp, buf, len);
   }
 
   // Something went wrong
@@ -80,9 +93,9 @@ int transport_write(Transport* _Transport, const uint8_t* buf, size_t len)
   if (_Transport->use_tls == true) {
     // return tls read
   }
+
   if (_Transport->use_tls == false) {
-    TCP_Client* tcp = _Transport->client;
-    return tcp_client_write_simple(tcp, buf, len);
+    return tcp_client_write_simple(&_Transport->tcp, buf, len);
   }
 
   // If we are here something went wrong
@@ -98,11 +111,13 @@ int transport_finish_connect(Transport* _Transport)
   if (_Transport->use_tls == true) {
     // return tls finish connect
   }
-  if (_Transport->use_tls == false) {
-    TCP_Client* tcp = _Transport->client;
-    return tcp_client_finish_connect(tcp->fd);
-  }
 
+  if (!_Transport->use_tls) {
+    if (_Transport->use_blocking) {
+      return SUCCESS;
+    }
+    return tcp_client_finish_connect(_Transport->tcp.fd);
+  }
   // If we are here something went wrong
   return ERR_IO;
 }
@@ -115,11 +130,7 @@ void transport_dispose(Transport* _Transport)
 
   if (_Transport->use_tls == true) {
     // tlsclient + call dispose
-  }
-
-  if (_Transport->use_tls == false) {
-    TCP_Client* tcp = _Transport->client;
-    tcp_client_dispose(tcp);
-    _Transport->client = NULL;
+  } else {
+    tcp_client_dispose(&_Transport->tcp);
   }
 }
