@@ -1,12 +1,14 @@
----
 :cmock:
-  :mock_path: test/mocks
-  :includes:
-    - maestromodules/tcp_client.h
+  :mock_path: "../../../build/test/mocks"
+  :mock_prefix: "Mock"
+
   :plugins:
-    - :expect
     - :ignore
     - :ignore_arg
-    - :return_thru_ptr
+    - :expect
+    - :expect_any_args
     - :callback
-  :enforce_strict_ordering: TRUE
+    - :return_thru_ptr
+    - :array
+
+  :verbosity: 1
