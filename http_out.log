@@ -5,10 +5,10 @@ outputs  = http_out_blocking.bin, http_out_nonblocking.bin, http_out.log
 
 === BLOCKING ===
 blocking rc = 0
-blocking bytes = 231
+blocking bytes = 230
 blocking wrote: http_out_blocking.bin
 
 === NONBLOCKING ===
 nonblocking: SUCCESS callback fired
-nonblocking bytes = 231
+nonblocking bytes = 230
 nonblocking wrote: http_out_nonblocking.bin
