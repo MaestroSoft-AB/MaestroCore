@@ -56,6 +56,7 @@ int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _met
     return ERR_NO_MEMORY;
   }
 
+  printf("Yahoooooooo\n");
   _Client->on_success     = _on_success;
   _Client->resp           = resp;
   _Client->req            = req;
