@@ -1,5 +1,7 @@
 #include <maestromodules/http_client.h>
 #include <maestromodules/scheduler.h>
+#include <maestromodules/tls_ca_bundle.h>
+#include <maestromodules/tls_global_ca.h>
 
 #include <errno.h>
 #include <inttypes.h>
@@ -205,6 +207,10 @@ static void make_paths(const char* prefix, char* out_blocking, size_t obsz, char
 
 int main(int argc, char** argv)
 {
+  int globalres = global_tls_ca_init();
+  printf("value of globalres %d\n", globalres);
+
+
   const char* url        = default_url();
   int         timeout_ms = 10000;
   const char* prefix     = "http_out";
