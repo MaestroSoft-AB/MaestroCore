@@ -8,6 +8,7 @@
 #include <mbedtls/ssl.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
+#include <maestromodules/tcp_client.h>
 
 // Jag har använt samma states som i tcp_client.h, men vi kan självklart ändra om det inte makes
 // sense
@@ -25,12 +26,12 @@
 
 typedef enum
 {
-  CLIENT_STATE_INIT,
-  CLIENT_STATE_CONNECTING,
-  CLIENT_STATE_READING,
-  CLIENT_STATE_WRITING,
-  CLIENT_STATE_DISPOSING,
-  CLIENT_STATE_ERROR
+  TLS_CLIENT_STATE_INIT,
+  TLS_CLIENT_STATE_CONNECTING,
+  TLS_CLIENT_STATE_READING,
+  TLS_CLIENT_STATE_WRITING,
+  TLS_CLIENT_STATE_DISPOSING,
+  TLS_CLIENT_STATE_ERROR
 
 } TLSClientState;
 
@@ -53,3 +54,5 @@ typedef struct
   TLSClientState state;
 
 } TLS_Client;
+
+#endif

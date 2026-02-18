@@ -1,16 +1,13 @@
-# --- Project modules ---
+-std=c11
+
 -Imodules/include
 -Iutils/include
 
-# --- Testing Framework (Unity & CMock) ---
-# Unity ligger inuti CMock-mappen i din struktur
 -Itest/cmock/vendor/unity/src
 -Itest/cmock/src
 -Itest/mocks
 
-# --- mbedTLS 4.0.0 ---
--Iexternal/mbedtls/include
--Iexternal/mbedtls/library/psa_crypto/include
+-Iexternal/anonymaestro/include
 
-# --- Globala Definitions ---
--DMBEDTLS_CONFIG_FILE=<maestromodules/tls_config.h>
+-DMBEDTLS_USER_CONFIG_FILE="maestromodules/tls_config.h"
+
