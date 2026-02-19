@@ -6,19 +6,19 @@ Prefix  = http_out
 
 === BLOCKING ===
 blocking rc = 0
-blocking bytes = 18035
+blocking bytes = 18115
 blocking wrote: http_out_http_blocking.bin
 
 === NONBLOCKING ===
 nonblocking: SUCCESS callback fired
-nonblocking bytes = 17937
+nonblocking bytes = 18114
 nonblocking wrote: http_out_http_nonblocking.bin
 
 ===== HTTPS (TLS) =====
 
 === BLOCKING ===
 blocking rc = 0
-blocking bytes = 324
+blocking bytes = 323
 blocking wrote: http_out_https_blocking.bin
 
 === NONBLOCKING ===

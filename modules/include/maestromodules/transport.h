@@ -23,7 +23,6 @@ typedef struct
   bool       use_tls;
   bool       use_blocking;
   bool       tls_initiated;
-  bool       tls_closing;
 
 } Transport;
 

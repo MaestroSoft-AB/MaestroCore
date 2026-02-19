@@ -29,7 +29,6 @@ static int transport_bio_recv(void* ctx, unsigned char* buf, size_t len)
 int transport_init(Transport* t, const char* host, const char* port, const char* scheme,
                    int timeout_ms, bool use_blocking)
 {
-  printf("Before nullchecks in transport_init\n");
 
   if (t == NULL || host == NULL || port == NULL || scheme == NULL || host[0] == '\0' ||
       port[0] == '\0' || scheme[0] == '\0') {
@@ -63,16 +62,11 @@ int transport_init(Transport* t, const char* host, const char* port, const char*
   }
   printf("transport_init host=%s port=%s scheme=%s use_tls=%d blocking=%d\n", host, port, scheme,
          t->use_tls, (int)use_blocking);
-  printf("scheme_lower='%s'\n", scheme_lower);
-  printf("after scheme parse: t->use_tls=%d\n", (int)t->use_tls);
-
 
   if (t->use_blocking) {
     res = tcp_client_blocking_init(&t->tcp, t->host, t->port, t->timeout_ms);
   } else {
-    printf("Attempting to init tcp from transport\n");
     res = tcp_client_init(&t->tcp, t->host, t->port);
-    printf("Result after tcp init: %d\n", res);
   }
 
   if (res != SUCCESS && res != ERR_IN_PROGRESS) {
