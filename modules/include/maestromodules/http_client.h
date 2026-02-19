@@ -70,13 +70,13 @@ typedef struct
   http_data resp_buf;
   Transport transport;
 
-  int request_length;
-  int bytes_received;
-  int retries;
-  int content_length;
-  int chunked;
-  int chunk_remaining;
-  int timeout_ms;
+  int    request_length;
+  int    bytes_received;
+  int    retries;
+  int    content_length;
+  int    chunked;
+  size_t chunk_remaining;
+  int    timeout_ms;
 
   HTTPClientState state;
   HTTPMethod      method;

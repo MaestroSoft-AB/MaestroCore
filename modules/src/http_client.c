@@ -380,8 +380,17 @@ HTTPClientState http_client_worktask_send_request(HTTP_Client* _Client)
   if (!_Client) {
     return HTTP_CLIENT_ERROR;
   }
+
+  if (_Client->bytes_sent == 0) {
+    printf("=== HTTP REQUEST (%d bytes) ===\n", _Client->request_length);
+    printf("%.*s\n", (int)_Client->request_length, _Client->request_buffer);
+    printf("=== END REQUEST ===\n");
+    fflush(stdout);
+  }
+
   size_t remaining = 0;
   remaining        = _Client->request_length - _Client->bytes_sent;
+
 
   int written =
       transport_write(&_Client->transport,
@@ -509,6 +518,58 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client* _Client)
     return HTTP_CLIENT_ERROR;
   }
 
+  if (_Client->recv_buf->size > 0) {
+    int headers_end =
+        http_parser_find_headers_end(_Client->recv_buf->addr, (size_t)_Client->recv_buf->size);
+
+    if (headers_end >= 0) {
+      size_t parsed_len = (size_t)headers_end + 4; // inkluderar \r\n\r\n
+
+      printf("=== RAW RESPONSE HEADERS (%zu bytes parsed_len) ===\n", parsed_len);
+      printf("%.*s\n", (int)parsed_len, (char*)_Client->recv_buf->addr);
+      printf("=== END HEADERS ===\n");
+      fflush(stdout);
+
+      if (http_parser_headers((const char*)_Client->recv_buf->addr, parsed_len,
+                              &_Client->req->headers) != SUCCESS) {
+        return HTTP_CLIENT_ERROR;
+      }
+
+      size_t body_already_read = 0;
+      if ((size_t)_Client->recv_buf->size > parsed_len) {
+        body_already_read = (size_t)_Client->recv_buf->size - parsed_len;
+        memmove(_Client->recv_buf->addr, _Client->recv_buf->addr + parsed_len, body_already_read);
+      }
+      _Client->recv_buf->size = (ssize_t)body_already_read;
+      _Client->retries        = 0;
+
+      const char* transfer_encoding_string = NULL;
+      if (http_parser_get_header_value(_Client->req->headers, "Transfer-Encoding",
+                                       &transfer_encoding_string) == SUCCESS &&
+          transfer_encoding_string && strstr(transfer_encoding_string, "chunked")) {
+        return HTTP_CLIENT_DECIPHER_CHONKINESS;
+      }
+
+      const char* content_length_string = NULL;
+      if (http_parser_get_header_value(_Client->req->headers, "Content-Length",
+                                       &content_length_string) == SUCCESS &&
+          content_length_string) {
+        int cl = 0;
+        parse_string_to_int(content_length_string, &cl);
+        if (cl > 0) {
+          _Client->content_length = cl;
+
+          if ((size_t)_Client->recv_buf->size >= (size_t)cl) {
+            return HTTP_CLIENT_RETURNING;
+          }
+          return HTTP_CLIENT_READING_BODY;
+        }
+      }
+
+      return HTTP_CLIENT_RETURNING;
+    }
+  }
+
   uint8_t read_buf[1024];
   int     bytes_read = transport_read(&_Client->transport, read_buf, sizeof(read_buf) - 1);
 
@@ -520,80 +581,28 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client* _Client)
     return HTTP_CLIENT_ERROR;
   }
 
-  if (bytes_read == 0 && _Client->recv_buf->addr == 0) {
+  if (bytes_read == 0) {
+    int headers_end =
+        http_parser_find_headers_end(_Client->recv_buf->addr, (size_t)_Client->recv_buf->size);
+    if (headers_end >= 0) {
+      return http_client_worktask_read_headers(_Client);
+    }
+
     printf("Connection closed while reading headers\r\n");
     return HTTP_CLIENT_ERROR;
   }
 
-  if (bytes_read > 0) {
+  // NUL-terminera read_buf (säkert eftersom vi läser sizeof-1)
+  read_buf[bytes_read] = '\0';
 
-    ssize_t bytes_stored =
-        buffer_append((void**)&_Client->recv_buf->addr, (size_t*)&_Client->recv_buf->size, read_buf,
-                      (size_t)bytes_read);
-
-    if (bytes_stored < 0) {
-      return HTTP_CLIENT_ERROR;
-    }
-  }
-
-  if (_Client->recv_buf->size == 0) {
-    /*No data, try again on next work call*/
-    return HTTP_CLIENT_READING_HEADERS;
-  }
-
-  int headers_end = http_parser_find_headers_end(_Client->recv_buf->addr, _Client->recv_buf->size);
-  if (headers_end < 0) {
-    /*Continue reading on next work call*/
-    return HTTP_CLIENT_READING_HEADERS;
-  }
-
-  /*Calculate headerlength including trailers*/
-  size_t parsed_len = (size_t)headers_end + 4;
-
-
-  if (http_parser_headers((const char*)_Client->recv_buf->addr, parsed_len,
-                          &_Client->req->headers) != SUCCESS) {
+  ssize_t bytes_stored =
+      buffer_append((void**)&_Client->recv_buf->addr, (size_t*)&_Client->recv_buf->size, read_buf,
+                    (size_t)bytes_read);
+  if (bytes_stored < 0) {
     return HTTP_CLIENT_ERROR;
   }
 
-  /*If there is a body move it to start of buffer*/
-  size_t body_already_read = 0;
-  if (_Client->recv_buf->size > parsed_len) {
-    body_already_read = _Client->recv_buf->size - parsed_len;
-    memmove(_Client->recv_buf->addr, _Client->recv_buf->addr + parsed_len, body_already_read);
-  }
-
-  _Client->recv_buf->size = body_already_read;
-  _Client->retries        = 0;
-
-  const char* content_length_string = NULL;
-  int         result =
-      http_parser_get_header_value(_Client->req->headers, "Content-Length", &content_length_string);
-
-  const char* transfer_encoding_string = NULL;
-  int         res_chunked = http_parser_get_header_value(_Client->req->headers, "Transfer-Encoding",
-                                                         &transfer_encoding_string);
-
-  if (res_chunked == SUCCESS && transfer_encoding_string &&
-      strstr(transfer_encoding_string, "chunked")) {
-    return HTTP_CLIENT_DECIPHER_CHONKINESS;
-  }
-
-  if (result == SUCCESS && content_length_string) {
-    int cl = 0;
-    parse_string_to_int(content_length_string, &cl);
-
-    if (cl > 0) {
-      /*Have we read full body?*/
-      _Client->content_length = cl;
-      if (_Client->recv_buf->size >= (size_t)cl) {
-        return HTTP_CLIENT_RETURNING;
-      }
-      return HTTP_CLIENT_READING_BODY;
-    }
-  }
-
-  return HTTP_CLIENT_RETURNING;
+  return HTTP_CLIENT_READING_HEADERS;
 }
 
 HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
@@ -636,7 +645,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
   size_t consume_len = (size_t)line_end + 2;
   size_t parse_len   = (size_t)line_end;
 
-  int chunk_size;
+  size_t chunk_size;
 
   for (size_t i = 0; i < (size_t)line_end; i++) {
     uint8_t ch = _Client->recv_buf->addr[i];
@@ -656,6 +665,9 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
 
   char*              endptr = NULL;
   unsigned long long val    = strtoull(line, &endptr, 16);
+
+  printf("CHUNK SIZE parsed: %llu (0x%llx)\n", val, val);
+  printf("recv_buf.size now: %zu\n", _Client->recv_buf->size);
   if (endptr == line) {
     return HTTP_CLIENT_ERROR;
   }
@@ -748,6 +760,11 @@ HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client* _Client)
         // Keep reading
         return HTTP_CLIENT_READING_BODY_CHUNKED;
       }
+      printf("Expected CRLF after chunk, got: %02X %02X (bufsize=%zu)\n",
+             _Client->recv_buf->size >= 1 ? _Client->recv_buf->addr[0] : 0,
+             _Client->recv_buf->size >= 2 ? _Client->recv_buf->addr[1] : 0,
+             _Client->recv_buf->size);
+
       perror("recv chunk-data");
       return HTTP_CLIENT_ERROR;
     }
@@ -854,7 +871,7 @@ HTTPClientState http_client_worktask_read_body(HTTP_Client* _Client)
   }
 
   if (bytes_read > 0) {
-
+    read_buf[bytes_read] = '\0';
     ssize_t bytes_stored =
         buffer_append((void**)&_Client->recv_buf->addr, (size_t*)&_Client->recv_buf->size, read_buf,
                       (size_t)bytes_read);
@@ -940,9 +957,16 @@ void http_client_taskwork(void* _context, uint64_t _montime)
   if (!_context) {
     return;
   }
+
+
   (void)_montime;
   HTTP_Client* client = (HTTP_Client*)_context;
 
+  static HTTPClientState last = -1;
+  if (client->state != last) {
+    printf("HTTP state -> %d\n", client->state);
+    last = client->state;
+  }
   uint64_t now = SystemMonotonicMS();
 
   switch (client->state) {

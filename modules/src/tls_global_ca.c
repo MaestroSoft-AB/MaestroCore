@@ -23,6 +23,12 @@ int global_tls_ca_init(void)
 
   mbedtls_x509_crt_init(&g_ca);
 
+  printf("g_ca_bundle_pem_len=%zu\n", g_ca_bundle_pem_len);
+  printf("head='%.30s'\n", (const char*)g_ca_bundle_pem);
+  printf("tail='%.30s'\n",
+         (const char*)g_ca_bundle_pem + (g_ca_bundle_pem_len > 40 ? g_ca_bundle_pem_len - 30 : 0));
+
+
   int ret = mbedtls_x509_crt_parse(&g_ca, (const unsigned char*)g_ca_bundle_pem,
                                    strlen(g_ca_bundle_pem) + 1);
 

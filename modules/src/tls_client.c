@@ -196,6 +196,16 @@ int tls_client_read(TLS_Client* _tls, uint8_t* _buf, size_t _len)
     return -1;
   }
 
+  if (res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+    return 0;
+  }
+
+  char errbuf[256];
+  mbedtls_strerror(res, errbuf, sizeof(errbuf));
+  printf("mbedtls_ssl_read error: %d (-0x%04X) %s\n", res, (unsigned)-res, errbuf);
+
+
+  errno = EIO;
   return -1;
 }
 
@@ -216,6 +226,7 @@ int tls_client_write(TLS_Client* _tls, const uint8_t* _buf, size_t _len)
     return -1;
   }
 
+  errno = EIO;
   return -1;
 }
 

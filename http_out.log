@@ -6,19 +6,22 @@ Prefix  = http_out
 
 === BLOCKING ===
 blocking rc = 0
-blocking bytes = 18112
+blocking bytes = 18035
 blocking wrote: http_out_http_blocking.bin
 
 === NONBLOCKING ===
 nonblocking: SUCCESS callback fired
-nonblocking bytes = 18022
+nonblocking bytes = 17937
 nonblocking wrote: http_out_http_nonblocking.bin
 
 ===== HTTPS (TLS) =====
 
 === BLOCKING ===
-blocking rc = -20
+blocking rc = 0
+blocking bytes = 324
+blocking wrote: http_out_https_blocking.bin
 
 === NONBLOCKING ===
-nonblocking: scheduler has no tasks (client likely disposed/error)
-nonblocking: no response captured
+nonblocking: SUCCESS callback fired
+nonblocking bytes = 324
+nonblocking wrote: http_out_https_nonblocking.bin

@@ -39,7 +39,7 @@ static const char* default_url(void) { return "http://www.google.com"; }
 static const char* default_tls_url(void)
 {
   return "https://api.open-meteo.com/v1/"
-         "forecast?latitude=59.33&longitude=18.06&current_weather=true";
+         "forecast?latitude=59.3293&longitude=18.0686&current=temperature_2m";
 }
 
 
