@@ -1,14 +1,24 @@
-Manual HTTP test (minimal)
-URL      = http://httpbin.org/get
-timeout  = 10000 ms
-outputs  = http_out_blocking.bin, http_out_nonblocking.bin, http_out.log
+Manual HTTP/TLS test
+Timeout = 10000 ms
+Prefix  = http_out
+
+===== HTTP (TCP) =====
 
 === BLOCKING ===
 blocking rc = 0
-blocking bytes = 230
-blocking wrote: http_out_blocking.bin
+blocking bytes = 18112
+blocking wrote: http_out_http_blocking.bin
 
 === NONBLOCKING ===
 nonblocking: SUCCESS callback fired
-nonblocking bytes = 230
-nonblocking wrote: http_out_nonblocking.bin
+nonblocking bytes = 18022
+nonblocking wrote: http_out_http_nonblocking.bin
+
+===== HTTPS (TLS) =====
+
+=== BLOCKING ===
+blocking rc = -20
+
+=== NONBLOCKING ===
+nonblocking: scheduler has no tasks (client likely disposed/error)
+nonblocking: no response captured

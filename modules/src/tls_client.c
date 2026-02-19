@@ -1,12 +1,12 @@
 #include <maestromodules/tls_client.h>
 #include <maestromodules/tls_global_ca.h>
 #include <maestroutils/error.h>
-
+#include <mbedtls/net_sockets.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/error.h>
-
+#include <mbedtls/x509.h>
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -20,12 +20,20 @@ static int tls_bio_send(void* ctx, const unsigned char* buf, size_t len)
 
   int res = c->bio.send(c->bio.io_ctx, buf, len);
 
-  if (res < 0) {
-    // Underlying layer should already set errno.
+  if (res > 0) {
+    return res;
+  }
+
+  if (res == 0) {
     return MBEDTLS_ERR_SSL_WANT_WRITE;
   }
 
-  return res;
+
+  if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+    return MBEDTLS_ERR_SSL_WANT_WRITE;
+  }
+
+  return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
 }
 
 static int tls_bio_recv(void* ctx, unsigned char* buf, size_t len)
@@ -34,15 +42,19 @@ static int tls_bio_recv(void* ctx, unsigned char* buf, size_t len)
 
   int res = c->bio.recv(c->bio.io_ctx, buf, len);
 
-  if (res < 0) {
-    return MBEDTLS_ERR_SSL_WANT_READ;
+  if (res > 0) {
+    return res;
   }
 
   if (res == 0) {
+    return MBEDTLS_ERR_SSL_CONN_EOF;
+  }
+
+  if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
     return MBEDTLS_ERR_SSL_WANT_READ;
   }
 
-  return res;
+  return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
 }
 
 
@@ -113,7 +125,112 @@ int tls_client_init(TLS_Client* _tls, const char* _host, const TLS_BIO* _bio)
 
   return SUCCESS;
 }
-int  tls_client_handshake_step(TLS_Client* c); // 0=done, ERR_IN_PROGRESS=needs more, <0=fatal
-int  tls_client_read(TLS_Client* c, uint8_t* buf, size_t len); // <0 sets errno like TCP
-int  tls_client_write(TLS_Client* c, const uint8_t* buf, size_t len);
-void tls_client_dispose(TLS_Client* c);
+
+int tls_client_handshake_step(TLS_Client* _tls)
+{
+  if (!_tls) {
+    return ERR_INVALID_ARG;
+  }
+
+  if (_tls->handshake_done) {
+    return SUCCESS;
+  }
+
+  int res = mbedtls_ssl_handshake(&_tls->ssl);
+
+  if (res == 0) {
+    _tls->handshake_done = 1;
+    return SUCCESS;
+  }
+
+  // Set errno so http doesn't have to be adjusted for tls
+  if (res == MBEDTLS_ERR_SSL_WANT_READ || res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+    errno = EAGAIN;
+    return ERR_IN_PROGRESS;
+  }
+
+  // if we get here something went wrong
+
+  const mbedtls_x509_crt* peer = mbedtls_ssl_get_peer_cert(&_tls->ssl);
+  printf("peer ptr = %p\n", (void*)peer);
+  if (peer) {
+    char sub[512], iss[512];
+    mbedtls_x509_dn_gets(sub, sizeof(sub), &peer->subject);
+    mbedtls_x509_dn_gets(iss, sizeof(iss), &peer->issuer);
+    printf("Peer subject: %s\n", sub);
+    printf("Peer issuer : %s\n", iss);
+  }
+
+  uint32_t flags = mbedtls_ssl_get_verify_result(&_tls->ssl);
+  if (flags) {
+    char vrfy[1024];
+    mbedtls_x509_crt_verify_info(vrfy, sizeof(vrfy), "  ! ", flags);
+    printf("Verify flags:\n%s\n", vrfy);
+  }
+
+  char errbuf[256];
+  mbedtls_strerror(res, errbuf, sizeof(errbuf));
+  printf("TLS handshake error: -0x%04X (%s)\n", -res, errbuf);
+
+  return ERR_IO;
+}
+
+int tls_client_read(TLS_Client* _tls, uint8_t* _buf, size_t _len)
+{
+  if (!_tls || !_buf) {
+    return ERR_INVALID_ARG;
+  }
+
+  int res = mbedtls_ssl_read(&_tls->ssl, _buf, _len);
+
+  if (res > 0) {
+    return res;
+  }
+
+  if (res == 0) {
+    return 0;
+  }
+
+  if (res == MBEDTLS_ERR_SSL_WANT_READ || res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+    errno = EAGAIN;
+    return -1;
+  }
+
+  return -1;
+}
+
+int tls_client_write(TLS_Client* _tls, const uint8_t* _buf, size_t _len)
+{
+  if (!_tls || !_buf) {
+    return ERR_INVALID_ARG;
+  }
+
+  int res = mbedtls_ssl_write(&_tls->ssl, _buf, _len);
+
+  if (res >= 0) {
+    return res;
+  }
+
+  if (res == MBEDTLS_ERR_SSL_WANT_READ || res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+    errno = EAGAIN;
+    return -1;
+  }
+
+  return -1;
+}
+
+void tls_client_dispose(TLS_Client* _tls)
+{
+  if (!_tls) {
+    return;
+  }
+
+  mbedtls_ssl_close_notify(&_tls->ssl);
+
+  mbedtls_ssl_free(&_tls->ssl);
+  mbedtls_ssl_config_free(&_tls->conf);
+  mbedtls_ctr_drbg_free(&_tls->ctr_drbg);
+  mbedtls_entropy_free(&_tls->entropy);
+
+  memset(_tls, 0, sizeof(TLS_Client));
+}

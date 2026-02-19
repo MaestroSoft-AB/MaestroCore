@@ -35,7 +35,13 @@ static int transport_bio_recv(void* ctx, unsigned char* buf, size_t len)
 // header, this forward declaration makes the test compile without touching your library headers.
 int scheduler_get_task_count(void);
 
-static const char* default_url(void) { return "http://httpbin.org/get"; }
+static const char* default_url(void) { return "http://www.google.com"; }
+static const char* default_tls_url(void)
+{
+  return "https://api.open-meteo.com/v1/"
+         "forecast?latitude=59.33&longitude=18.06&current_weather=true";
+}
+
 
 /* ------------------------------------------------------------ */
 /* File helpers                                                 */
@@ -213,68 +219,131 @@ static int run_nonblocking(const char* url, int timeout_ms, const char* out_path
 
   return 0;
 }
+// static int run_blocking_tls(int timeout_ms, const char* out_path, FILE* logf)
+// {
+//   return run_blocking(default_tls_url(), timeout_ms, out_path, logf);
+// }
+//
+// static int run_nonblocking_tls(int timeout_ms, const char* out_path, FILE* logf)
+// {
+//   return run_nonblocking(default_tls_url(), timeout_ms, out_path, logf);
+// }
+
 
 /* ------------------------------------------------------------ */
 
-static void make_paths(const char* prefix, char* out_blocking, size_t obsz, char* out_nonblocking,
-                       size_t onbsz, char* out_log, size_t olsz)
-{
-  snprintf(out_blocking, obsz, "%s_blocking.bin", prefix);
-  snprintf(out_nonblocking, onbsz, "%s_nonblocking.bin", prefix);
-  snprintf(out_log, olsz, "%s.log", prefix);
-}
+// static void make_paths(const char* prefix, char* out_blocking, size_t obsz, char*
+// out_nonblocking,
+//                        size_t onbsz, char* out_log, size_t olsz)
+// {
+//   snprintf(out_blocking, obsz, "%s_blocking.bin", prefix);
+//   snprintf(out_nonblocking, onbsz, "%s_nonblocking.bin", prefix);
+//   snprintf(out_log, olsz, "%s.log", prefix);
+// }
 
 int main(int argc, char** argv)
 {
+  /* -------------------------------------------------------- */
+  /* 1. Init global CA (required once for TLS)               */
+  /* -------------------------------------------------------- */
   int globalres = global_tls_ca_init();
-  printf("value of globalres %d\n", globalres);
+  printf("global_tls_ca_init() = %d\n", globalres);
 
+  if (globalres != 0) {
+    printf("Global TLS CA init failed — HTTPS tests will fail.\n");
+  }
 
-  TLS_Client tls;
-  Transport  Transport;
+  /* -------------------------------------------------------- */
+  /* 2. Parse arguments                                       */
+  /* -------------------------------------------------------- */
 
-  TLS_BIO bio = {.io_ctx = &Transport.tcp, .send = transport_bio_send, .recv = transport_bio_recv};
+  const char* http_url  = default_url();     // http://
+  const char* https_url = default_tls_url(); // https://
 
-  int ret = tls_client_init(&tls, "example.com", &bio);
-
-  printf("TLS_CLIENT_INIT RESULT: %d\n", ret);
-
-
-  const char* url        = default_url();
   int         timeout_ms = 10000;
   const char* prefix     = "http_out";
 
   if (argc >= 2)
-    url = argv[1];
+    timeout_ms = atoi(argv[1]);
   if (argc >= 3)
-    timeout_ms = atoi(argv[2]);
-  if (argc >= 4)
-    prefix = argv[3];
+    prefix = argv[2];
 
-  char path_blocking[512];
-  char path_nonblocking[512];
+  /* -------------------------------------------------------- */
+  /* 3. Prepare output paths                                  */
+  /* -------------------------------------------------------- */
+
+  char path_http_blocking[512];
+  char path_http_nonblocking[512];
+  char path_https_blocking[512];
+  char path_https_nonblocking[512];
   char path_log[512];
-  make_paths(prefix, path_blocking, sizeof(path_blocking), path_nonblocking,
-             sizeof(path_nonblocking), path_log, sizeof(path_log));
+
+  snprintf(path_http_blocking, sizeof(path_http_blocking), "%s_http_blocking.bin", prefix);
+
+  snprintf(path_http_nonblocking, sizeof(path_http_nonblocking), "%s_http_nonblocking.bin", prefix);
+
+  snprintf(path_https_blocking, sizeof(path_https_blocking), "%s_https_blocking.bin", prefix);
+
+  snprintf(path_https_nonblocking, sizeof(path_https_nonblocking), "%s_https_nonblocking.bin",
+           prefix);
+
+  snprintf(path_log, sizeof(path_log), "%s.log", prefix);
 
   FILE* logf = open_log(path_log);
   if (!logf)
     return 2;
 
-  fprintf(logf, "Manual HTTP test (minimal)\n");
-  fprintf(logf, "URL      = %s\n", url);
-  fprintf(logf, "timeout  = %d ms\n", timeout_ms);
-  fprintf(logf, "outputs  = %s, %s, %s\n", path_blocking, path_nonblocking, path_log);
+  /* -------------------------------------------------------- */
+  /* 4. Print header                                          */
+  /* -------------------------------------------------------- */
+
+  printf("\n===== MaestroCore HTTP/TLS Manual Test =====\n");
+  printf("Timeout   = %d ms\n", timeout_ms);
+  printf("Prefix    = %s\n", prefix);
+  printf("Log file  = %s\n\n", path_log);
+
+  fprintf(logf, "Manual HTTP/TLS test\n");
+  fprintf(logf, "Timeout = %d ms\n", timeout_ms);
+  fprintf(logf, "Prefix  = %s\n", prefix);
   fflush(logf);
 
-  // Small stdout header so you immediately see where files are written
-  printf("Manual HTTP test (minimal)\n");
-  printf("URL      = %s\n", url);
-  printf("timeout  = %d ms\n", timeout_ms);
-  printf("outputs  = %s, %s, %s\n", path_blocking, path_nonblocking, path_log);
+  /* -------------------------------------------------------- */
+  /* 5. HTTP TESTS (plain TCP)                                */
+  /* -------------------------------------------------------- */
 
-  (void)run_blocking(url, timeout_ms, path_blocking, logf);
-  (void)run_nonblocking(url, 0, path_nonblocking, logf);
+  printf("===== TESTING HTTP (TCP) =====\n");
+
+  fprintf(logf, "\n===== HTTP (TCP) =====\n");
+  fflush(logf);
+
+  run_blocking(http_url, timeout_ms, path_http_blocking, logf);
+
+  run_nonblocking(http_url, timeout_ms, path_http_nonblocking, logf);
+
+  /* -------------------------------------------------------- */
+  /* 6. HTTPS TESTS (TLS)                                     */
+  /* -------------------------------------------------------- */
+
+  printf("\n===== TESTING HTTPS (TLS) =====\n");
+
+  fprintf(logf, "\n===== HTTPS (TLS) =====\n");
+  fflush(logf);
+
+  run_blocking(https_url, timeout_ms, path_https_blocking, logf);
+
+  run_nonblocking(https_url, timeout_ms, path_https_nonblocking, logf);
+
+  /* -------------------------------------------------------- */
+  /* 7. Done                                                  */
+  /* -------------------------------------------------------- */
+
+  printf("\nTests complete.\n");
+  printf("Check output files:\n");
+  printf("  %s\n", path_http_blocking);
+  printf("  %s\n", path_http_nonblocking);
+  printf("  %s\n", path_https_blocking);
+  printf("  %s\n", path_https_nonblocking);
+  printf("  %s\n\n", path_log);
 
   fclose(logf);
   return 0;

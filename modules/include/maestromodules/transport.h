@@ -3,6 +3,7 @@
 #ifndef TRANSPORT_H
 #define TRANSPORT_H
 #include <maestromodules/tcp_client.h>
+#include <maestromodules/tls_client.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -17,9 +18,12 @@ typedef struct
 
 
   TCP_Client tcp;
+  TLS_Client tls;
   int        timeout_ms;
   bool       use_tls;
   bool       use_blocking;
+  bool       tls_initiated;
+  bool       tls_closing;
 
 } Transport;
 
