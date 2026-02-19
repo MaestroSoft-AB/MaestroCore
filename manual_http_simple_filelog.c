@@ -2,6 +2,8 @@
 #include <maestromodules/scheduler.h>
 #include <maestromodules/tls_ca_bundle.h>
 #include <maestromodules/tls_global_ca.h>
+#include <maestromodules/tls_client.h>
+#include <maestromodules/transport.h>
 
 #include <errno.h>
 #include <inttypes.h>
@@ -11,6 +13,23 @@
 #include <string.h>
 
 extern uint64_t SystemMonotonicMS(void);
+
+static int transport_bio_send(void* ctx, const unsigned char* buf, size_t len)
+{
+  TCP_Client* tcp = (TCP_Client*)ctx;
+  int         ret = tcp_client_write_simple(tcp, buf, (int)len);
+  if (ret < 0)
+    return -1; // tls_client kommer mappa errno om det behövs
+  return ret;
+}
+
+static int transport_bio_recv(void* ctx, unsigned char* buf, size_t len)
+{
+  TCP_Client* tcp = (TCP_Client*)ctx;
+  int         ret = tcp_client_read_simple(tcp, buf, (int)len);
+  return ret; // errno sätts av recv()
+}
+
 
 // If scheduler_get_task_count() exists in your scheduler.c (you pasted it), but is not in the
 // header, this forward declaration makes the test compile without touching your library headers.
@@ -209,6 +228,16 @@ int main(int argc, char** argv)
 {
   int globalres = global_tls_ca_init();
   printf("value of globalres %d\n", globalres);
+
+
+  TLS_Client tls;
+  Transport  Transport;
+
+  TLS_BIO bio = {.io_ctx = &Transport.tcp, .send = transport_bio_send, .recv = transport_bio_recv};
+
+  int ret = tls_client_init(&tls, "example.com", &bio);
+
+  printf("TLS_CLIENT_INIT RESULT: %d\n", ret);
 
 
   const char* url        = default_url();

@@ -6,6 +6,24 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+/*************************** TLS TEST STUFF *********************/
+
+static int transport_bio_send(void* ctx, const unsigned char* buf, size_t len)
+{
+  TCP_Client* tcp = (TCP_Client*)ctx;
+  int         ret = tcp_client_write_simple(tcp, buf, (int)len);
+  if (ret < 0)
+    return -1; // tls_client kommer mappa errno om det behövs
+  return ret;
+}
+
+static int transport_bio_recv(void* ctx, unsigned char* buf, size_t len)
+{
+  TCP_Client* tcp = (TCP_Client*)ctx;
+  int         ret = tcp_client_read_simple(tcp, buf, (int)len);
+  return ret; // errno sätts av recv()
+}
+
 
 int transport_init(Transport* t, const char* host, const char* port, const char* scheme,
                    int timeout_ms, bool use_blocking)

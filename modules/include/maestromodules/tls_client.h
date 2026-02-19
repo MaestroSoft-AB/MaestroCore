@@ -35,6 +35,15 @@ typedef enum
 
 } TLSClientState;
 
+// Callbacks for readwrite
+typedef int (*tls_bio_send_fn)(void* ctx, const unsigned char* buf, size_t len);
+typedef int (*tls_bio_recv_fn)(void* ctx, unsigned char* buf, size_t len);
+typedef struct
+{
+  void*           io_ctx;
+  tls_bio_send_fn send;
+  tls_bio_recv_fn recv;
+} TLS_BIO;
 typedef struct
 {
   // Active TLS session (holds handshake state, negotiated keys, record layer)
@@ -49,10 +58,21 @@ typedef struct
   //  Cryptographically secure deterministic RNG used by TLS (key material, nonces)
   mbedtls_ctr_drbg_context ctr_drbg;
 
+  int            handshake_done;
   TCP_Client*    tcp;  //  TCP socket used by TLS
   const char*    host; //  Target hostname (used for SNI and certificate hostname verification)
   TLSClientState state;
+  TLS_BIO        bio;
 
 } TLS_Client;
+
+int tls_client_handshake_step(TLS_Client* c); // 0=done, ERR_IN_PROGRESS=needs more, <0=fatal
+
+
+int  tls_client_init(TLS_Client* c, const char* hostname, const TLS_BIO* bio);
+int  tls_client_read(TLS_Client* c, uint8_t* buf, size_t len); // <0 sets errno like TCP
+int  tls_client_write(TLS_Client* c, const uint8_t* buf, size_t len);
+void tls_client_dispose(TLS_Client* c);
+
 
 #endif

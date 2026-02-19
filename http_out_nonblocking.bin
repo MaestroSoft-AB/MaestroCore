@@ -3,7 +3,7 @@
   "headers": {
     "Host": "httpbin.org", 
     "User-Agent": "httpclient", 
-    "X-Amzn-Trace-Id": "Root=1-69963e6f-1062733a63567fc17b278fb6"
+    "X-Amzn-Trace-Id": "Root=1-6996c172-7a8a43c21ee4bbbf6caee0bf"
   }, 
   "origin": "46.59.58.174", 
   "url": "http://httpbin.org/get"
