@@ -2,6 +2,7 @@
 #define __MAESTROUTILS_H__
 
 #include <maestroutils/error.h>
+#include <maestroutils/config_handler.h>
 #include <maestroutils/file_utils.h>
 #include <maestroutils/json_utils.h>
 #include <maestroutils/string_utils.h>
