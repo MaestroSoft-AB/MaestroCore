@@ -4,4 +4,4 @@
 
 int               global_tls_ca_init(void);
 mbedtls_x509_crt* global_tls_ca_get(void);
-void              global_tls_ca_deinit(void);
+void              global_tls_ca_dispose(void);
