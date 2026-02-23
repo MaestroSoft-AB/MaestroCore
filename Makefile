@@ -108,7 +108,8 @@ anonymaestro: $(MBEDTLS_LIBS)
 $(MBEDTLS_LIBS):
 	@mkdir -p $(ANONY_BUILD_DIR)
 	cmake -S $(ANONY_DIR) -B $(ANONY_BUILD_DIR) \
-		-DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF
+	-DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF \
+	-DCMAKE_C_FLAGS="-I$(abspath $(MOD_INC_DIR)) -DMBEDTLS_USER_CONFIG_FILE=\\\"maestromodules/tls_config.h\\\""
 	cmake --build $(ANONY_BUILD_DIR)
 
 # --- Compile rules ---
