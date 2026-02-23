@@ -1,6 +1,7 @@
 # =============================
 # ===== MaestroCore Makefile ===
 # =============================
+.NOTPARALLEL:
 
 UNAME_S := $(shell uname -s)
 
