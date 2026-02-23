@@ -1,305 +1,144 @@
 # MaestroCore
 
-MaestroCore is a lightweight, modular C library that provides reusable networking modules and general-purpose utilities.  
-It is designed to be easily vendored into other projects or added as a Git submodule.
+**MaestroCore** is a modular C library providing reusable core
+functionality for networking, TLS, HTTP, utilities, and system-level
+helpers. It is designed as a **static library** with a clean include
+structure and minimal external dependencies.
 
-The library is split into two main parts:
+------------------------------------------------------------------------
 
-- **MaestroModules** – networking and core functionality  
-  (TCP client, HTTP client, scheduler, linked lists, etc.)
-- **MaestroUtils** – reusable utilities  
-  (file helpers, JSON helpers, time helpers, error handling, HTTP status codes, etc.)
+## Features
 
-You can build and use them independently or as one combined library.
+-   Modular architecture (`modules` + `utils`)
+-   Static library build (`libmaestrocore.a`)
+-   TLS support via **mbedTLS** (AnonyMaestro)
+-   Optional JSON support via **cJSON**
+-   HTTP client & parser
+-   TCP / TLS transport abstraction
+-   Logging, file utilities, time utilities, error handling
 
----
+------------------------------------------------------------------------
 
-## Directory Layout
+## Build Requirements
 
-```
-MaestroCore/
-├── modules/
-│   ├── include/
-│   │   ├── maestromodules.h
-│   │   └── maestromodules/
-│   └── src/
-├── utils/
-│   ├── include/
-│   │   ├── maestroutils.h
-│   │   └── maestroutils/
-│   └── src/
-├── build/
-├── Makefile
-└── compile_flags.txt
-```
+-   C compiler with C11 support (`gcc`, `clang`, or `cc`)
+-   `make`
+-   `cmake` (for mbedTLS / AnonyMaestro)
+-   POSIX-compatible system
 
-Public headers are exposed through:
+------------------------------------------------------------------------
 
-```c
-#include <maestromodules.h>
-#include <maestroutils.h>
-```
+## Building the Library
 
-or via their namespaced forms:
+### Default build
 
-```c
-#include <maestromodules/tcp_client.h>
-#include <maestroutils/file_utils.h>
-```
-
----
-
-## Building
-
-The project uses a plain Makefile and produces static libraries.
-
-### Build everything (combined library)
-
-```bash
-make
-# or
-make core
-```
+    make
 
 Produces:
+
+    build/lib/libmaestrocore.a
+
+------------------------------------------------------------------------
+
+### Enable JSON support
+
+    make JSON=1
+
+------------------------------------------------------------------------
+
+# Using MaestroCore in Other Projects
+
+## Option 1 -- Git Submodule (Recommended)
+
+Add MaestroCore as a submodule:
+
+    git submodule add https://your.repo.url/MaestroCore.git external/MaestroCore
+    git submodule update --init --recursive
+
+Inside your main project, build it:
+
+    cd external/MaestroCore
+    make
+
+Then link it from your project build system.
+
+### Example (Makefile-based project)
+
+    -Iexternal/MaestroCore/modules/include
+    -Iexternal/MaestroCore/utils/include
+    -Lexternal/MaestroCore/build/lib
+    -lmaestrocore
+    -lpthread -lm
+
+If TLS is used, also link the mbedTLS static libraries:
+
+    external/MaestroCore/build/anonymaestro/library/libmbedtls.a
+    external/MaestroCore/build/anonymaestro/library/libmbedx509.a
+    external/MaestroCore/build/anonymaestro/library/libmbedcrypto.a
+
+------------------------------------------------------------------------
+
+## Option 2 -- Add as a CMake Subdirectory
+
+If your main project uses CMake:
+
+    add_subdirectory(external/MaestroCore)
+
+You can then reference the static library in your target linking
+configuration.
+
+------------------------------------------------------------------------
+
+## Option 3 -- Prebuilt Static Library
+
+1.  Build MaestroCore separately:
+
+```{=html}
+<!-- -->
 ```
-build/lib/libmaestrocore.a
+    make
+
+2.  Copy:
+
+```{=html}
+<!-- -->
 ```
+    build/lib/libmaestrocore.a
+    modules/include/
+    utils/include/
 
-### Build only modules
+3.  Add include paths and link flags in your project.
 
-```bash
-make modules
-```
+------------------------------------------------------------------------
 
-Produces:
-```
-build/lib/libmaestromodules.a
-```
+## Include Headers
 
-### Build only utils
+Umbrella headers allow clean includes:
 
-```bash
-make utils
-```
-
-Produces:
-```
-build/lib/libmaestroutils.a
-```
-
-### Clean
-
-```bash
-make clean
-```
-
----
-
-## Optional JSON Support (cJSON)
-
-JSON support in MaestroUtils is optional and depends on **cJSON**.
-
-To enable JSON:
-
-```bash
-make JSON=1
-```
-
-This:
-
-- Builds `json_utils.c`
-- Builds cJSON
-- Defines:
-
-```c
-#define MAESTROUTILS_WITH_CJSON
-```
-
-in all compilation units.
-
-Without `JSON=1`, JSON helpers are not built and not available.
-
-In code:
-
-```c
-#ifdef MAESTROUTILS_WITH_CJSON
-#include <maestroutils/json_utils.h>
-#endif
-```
-
----
-
-## Using MaestroCore in Another Project
-
-You can vendor the repository or add it as a submodule:
-
-```bash
-git submodule add https://github.com/MaestroSoft-AB/MaestroCore.git external/MaestroCore
-```
-
-Then build it once:
-
-```bash
-cd external/MaestroCore
-make
-```
-
-Link against it from your project.
-
-Example:
-
-```
-YourProject/
-├── src/
-├── external/
-│   └── MaestroCore/
-│       └── build/lib/libmaestrocore.a
+``` c
+#include <maestromodules/http_client.h>
+#include <maestroutils/file_logging.h>
 ```
 
-Compiler flags:
+Include paths required:
 
-```make
-CFLAGS += -Iexternal/MaestroCore/modules/include
-CFLAGS += -Iexternal/MaestroCore/utils/include
-```
+    -Ipath/to/MaestroCore/modules/include
+    -Ipath/to/MaestroCore/utils/include
 
-Linker flags:
+------------------------------------------------------------------------
 
-```make
-LDFLAGS += external/MaestroCore/build/lib/libmaestrocore.a
-```
+## Manual Test
 
-Or if you only want modules:
+Build:
 
-```make
-LDFLAGS += external/MaestroCore/build/lib/libmaestromodules.a
-```
+    make make-test
 
-Or utils:
+Binary:
 
-```make
-LDFLAGS += external/MaestroCore/build/lib/libmaestroutils.a
-```
+    build/http_manual_test
 
----
+------------------------------------------------------------------------
 
-## Example Makefile Snippet
+## Cleaning
 
-```make
-MAESTRO_DIR := external/MaestroCore
-
-CFLAGS += -I$(MAESTRO_DIR)/modules/include
-CFLAGS += -I$(MAESTRO_DIR)/utils/include
-
-# Build MaestroCore first
-maestro:
-	$(MAKE) -C $(MAESTRO_DIR)
-
-# Link your app with MaestroCore
-app: $(OBJS) maestro
-	$(CC) $(OBJS) $(MAESTRO_DIR)/build/lib/libmaestrocore.a -o app
-```
-
-With JSON support:
-
-```make
-maestro:
-	$(MAKE) -C $(MAESTRO_DIR) JSON=1
-```
-
----
-
-## Installation (Optional)
-
-You can install headers and libraries system-wide:
-
-```bash
-sudo make install PREFIX=/usr/local
-```
-
-Headers:
-```
-/usr/local/include/maestromodules.h
-/usr/local/include/maestroutils.h
-/usr/local/include/maestromodules/
-/usr/local/include/maestroutils/
-```
-
-Libraries:
-```
-/usr/local/lib/libmaestrocore.a
-/usr/local/lib/libmaestromodules.a
-/usr/local/lib/libmaestroutils.a
-```
-
-Then use normally:
-
-```c
-#include <maestromodules.h>
-#include <maestroutils.h>
-```
-
-and compile:
-
-```bash
-cc main.c -lmaestrocore
-```
-
-
----
-
-## Testing
-
-MaestroCore uses **Unity** and **CMock** for unit testing. This allows for testing complex network state machines by mocking the TCP layer.
-
-### Prerequisites
-To run the tests, you need:
-- **GCC/Clang** (C11 support)
-- **Make**
-- **Ruby** (Required by CMock to generate mock objects from headers)
-
-On Ubuntu/Debian:
-```bash
-sudo apt install build-essential ruby
-```
-
-### Running tests
-
-The test suite automatically generates mocks for internal dependencies before compiling the test runner.
-
-```make test```
-
-
-
-// HOW TO BUILD \\
-
-STEP 1: FIRST TIME SETUP (CONFIGURATION) - You only need to run this once, or when you want to change what is enabled:
-
-EVERYTHING ON:
-cmake --preset config-full
-
-UTILS ONLY (VERY FAST):
-cmake --preset config-utils
-
-UTILS + MODULES:
-cmake --preset config-modules
-
-
-STEP 2: BUILDING - Now you can build exactly what you need from the root:
-
-BUILD EVERYTHING:
-cmake --build --preset full
-
-BUILD ONLY UTILS:
-cmake --build --preset utils
-
-BUILD ONLY MODULES:
-cmake --build --preset modules
-
-BUILD TEST SUITE:
-cmake --build --preset test
-
-To run tests:
-cmake --build --preset tests
-ctest --preset unit-tests
+    make clean
