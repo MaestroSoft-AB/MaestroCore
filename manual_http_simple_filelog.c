@@ -4,6 +4,7 @@
 #include <maestromodules/tls_global_ca.h>
 #include <maestromodules/tls_client.h>
 #include <maestromodules/transport.h>
+#include <maestroutils/file_logging.h>
 
 #include <errno.h>
 #include <inttypes.h>
@@ -252,6 +253,14 @@ int main(int argc, char** argv)
   if (globalres != 0) {
     printf("Global TLS CA init failed — HTTPS tests will fail.\n");
   }
+
+  if (log_init("test.log") != 0) {
+    printf("Can't open logfile");
+  }
+
+  LOG_INFO("Starting program...");
+
+  log_close();
 
   /* -------------------------------------------------------- */
   /* 2. Parse arguments                                       */

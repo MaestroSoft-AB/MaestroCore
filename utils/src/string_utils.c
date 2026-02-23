@@ -131,4 +131,5 @@ bool char_is_number(const char _c)
     if ((int)_c == i + 48)
       if ((int)_c == i + 48)
         return true;
+  return false;
 }

@@ -6,4 +6,5 @@
 #include <maestroutils/json_utils.h>
 #include <maestroutils/string_utils.h>
 #include <maestroutils/time_utils.h>
+#include <maestroutils/file_logging.h>
 #endif
