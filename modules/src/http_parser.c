@@ -1,6 +1,6 @@
 #include <maestromodules/http_client.h>
 #include <maestromodules/linked_list.h>
-#include <maestroutils/http_parser.h>
+#include <maestromodules/http_parser.h>
 #include <stdio.h>
 
 void http_parser_dispose(HTTP_Request* _Req, HTTP_Response* _Resp);
@@ -24,7 +24,7 @@ int http_parser_first_line(const char* _line, size_t _line_len, HTTP_Request* _R
   memcpy(line_copy, _line, _line_len);
   line_copy[_line_len] = '\0';
 
-  char* method = line_copy;
+  char* method      = line_copy;
   char* first_space = strchr(line_copy, ' ');
   if (!first_space) {
     if (line_copy != NULL)
@@ -34,7 +34,7 @@ int http_parser_first_line(const char* _line, size_t _line_len, HTTP_Request* _R
   *first_space = '\0';
 
   char* request_target = first_space + 1;
-  char* second_space = strchr(request_target, ' ');
+  char* second_space   = strchr(request_target, ' ');
   if (!second_space) {
     if (line_copy != NULL)
       free(line_copy);
@@ -62,7 +62,7 @@ int http_parser_first_line(const char* _line, size_t _line_len, HTTP_Request* _R
 
   } else {
     *question_mark = '\0';
-    _Req->path = strdup(request_target);
+    _Req->path     = strdup(request_target);
     if (!_Req->path) {
       if (line_copy != NULL)
         free(line_copy);
@@ -83,19 +83,19 @@ int http_parser_first_line(const char* _line, size_t _line_len, HTTP_Request* _R
       char* param_delim = strchr(param_str, '=');
       if (!param_delim)
         break;
-      *param_delim = '\0';
+      *param_delim    = '\0';
       char* param_key = param_str;
 
       char* amp = strchr(param_delim + 1, '&');
       char* param_value;
 
       if (amp) {
-        *amp = '\0';
+        *amp        = '\0';
         param_value = param_delim + 1;
-        param_str = amp + 1; /*Keep looping*/
+        param_str   = amp + 1; /*Keep looping*/
       } else {
         param_value = param_delim + 1;
-        param_str = NULL; /*Last param*/
+        param_str   = NULL; /*Last param*/
       }
 
       HTTP_Key_Value* param = malloc(sizeof(HTTP_Key_Value));
@@ -105,7 +105,7 @@ int http_parser_first_line(const char* _line, size_t _line_len, HTTP_Request* _R
         http_parser_dispose(_Req, NULL);
         return ERR_NO_MEMORY;
       }
-      param->key = strdup(param_key);
+      param->key   = strdup(param_key);
       param->value = strdup(param_value);
       if (!param->key || !param->value) {
         if (line_copy != NULL)
@@ -120,7 +120,7 @@ int http_parser_first_line(const char* _line, size_t _line_len, HTTP_Request* _R
   }
 
   _Req->method_str = strdup(method);
-  _Req->version = strdup(version);
+  _Req->version    = strdup(version);
   if (!_Req->method_str || !_Req->version) {
     if (line_copy != NULL)
       free(line_copy);
@@ -152,7 +152,7 @@ int http_parser_response_firstline(const char* _line, size_t _line_len, HTTP_Res
 
   // Format: HTTP-version SP status-code SP reason-phrase
   char* version_string = line_copy;
-  char* first_space = strchr(line_copy, ' ');
+  char* first_space    = strchr(line_copy, ' ');
   if (!first_space) {
     if (line_copy != NULL)
       free(line_copy);
@@ -161,13 +161,13 @@ int http_parser_response_firstline(const char* _line, size_t _line_len, HTTP_Res
   *first_space = '\0';
 
   char* status_string = first_space + 1;
-  char* second_space = strchr(status_string, ' ');
+  char* second_space  = strchr(status_string, ' ');
   if (!second_space) {
     if (line_copy != NULL)
       free(line_copy);
     return ERR_BAD_FORMAT;
   }
-  *second_space = '\0';
+  *second_space       = '\0';
   char* reason_string = second_space + 1;
 
   _Resp->version = strdup(version_string);
@@ -250,7 +250,7 @@ int http_parser_headers(const char* _buf, size_t _buf_len, Linked_List** _header
   size_t start = 0;
   while (start < _buf_len) {
 
-    int line_end = -1;
+    int    line_end = -1;
     size_t i;
 
     for (i = start; i + 1 < _buf_len; i++) {
@@ -290,8 +290,8 @@ int http_parser_headers(const char* _buf, size_t _buf_len, Linked_List** _header
       return ERR_BAD_FORMAT;
     }
 
-    *colon = '\0';
-    char* key = line;
+    *colon      = '\0';
+    char* key   = line;
     char* value = colon + 1;
 
     /*Ignore leading whitespace or tabs by moving pointer forward*/
@@ -324,7 +324,7 @@ int http_parser_headers(const char* _buf, size_t _buf_len, Linked_List** _header
       return ERR_NO_MEMORY;
     }
 
-    header->key = strdup(key);
+    header->key   = strdup(key);
     header->value = strdup(value);
 
     if (!header->key || !header->value) {
@@ -354,8 +354,8 @@ const char* http_build_full_response(int _status_code, const char* _headers, con
   (void)_body;
   (void)_headers;
   /* Build firstline */
-  const char* reason_phrase = HttpStatus_reasonPhrase(_status_code);
-  char firstline[128];
+  const char*  reason_phrase = HttpStatus_reasonPhrase(_status_code);
+  char         firstline[128];
   unsigned int firstline_len =
       snprintf(firstline, 128, HTTP_RESPONSE_FIRSTLINE_TEMPLATE, _status_code, reason_phrase);
   firstline[firstline_len] = '\0';
@@ -456,9 +456,9 @@ int http_parser_url(const char* _URL, void* _Context)
   URL_Parts* url_parts = (URL_Parts*)_Context;
 
   url_parts->scheme[0] = '\0';
-  url_parts->host[0] = '\0';
-  url_parts->port[0] = '\0';
-  url_parts->path[0] = '\0';
+  url_parts->host[0]   = '\0';
+  url_parts->port[0]   = '\0';
+  url_parts->path[0]   = '\0';
 
   const char* url_ptr = _URL;
 
@@ -481,8 +481,8 @@ int http_parser_url(const char* _URL, void* _Context)
 
   /*-----------------------HOST------------------------------*/
   const char* host_start = url_ptr;
-  const char* slash = strchr(url_ptr, '/');
-  const char* colon = strchr(url_ptr, ':');
+  const char* slash      = strchr(url_ptr, '/');
+  const char* colon      = strchr(url_ptr, ':');
 
   const char* host_end = NULL;
 
@@ -508,8 +508,8 @@ int http_parser_url(const char* _URL, void* _Context)
 
   if (host_end == colon) {
     const char* port_start = colon + 1;
-    const char* url_end = _URL + strlen(_URL);
-    const char* port_end = slash ? slash : url_end;
+    const char* url_end    = _URL + strlen(_URL);
+    const char* port_end   = slash ? slash : url_end;
 
     if (port_start == port_end) {
       return ERR_BAD_FORMAT;
@@ -547,6 +547,23 @@ int http_parser_url(const char* _URL, void* _Context)
     // No path
     url_parts->path[0] = '/';
     url_parts->path[1] = '\0';
+  }
+
+  /*---------------------DEFAULT PORT---------------------------*/
+  if (url_parts->port[0] == '\0') {
+    // convert scheme to lowercase for safe comparison
+    char scheme_lower[6] = {0};
+    for (int i = 0; url_parts->scheme[i] && i < 5; i++) {
+      scheme_lower[i] = (char)tolower((unsigned char)url_parts->scheme[i]);
+    }
+
+    if (strcmp(scheme_lower, "https") == 0) {
+      strcpy(url_parts->port, "443");
+    } else if (strcmp(scheme_lower, "http") == 0) {
+      strcpy(url_parts->port, "80");
+    } else {
+      return ERR_BAD_FORMAT;
+    }
   }
 
   return SUCCESS;

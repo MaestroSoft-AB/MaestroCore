@@ -1,3 +1,13 @@
+-std=c11
+
 -Imodules/include
 -Iutils/include
+
+-Itest/cmock/vendor/unity/src
+-Itest/cmock/src
+-Itest/mocks
+
+-Iexternal/anonymaestro/include
+
+-DMBEDTLS_USER_CONFIG_FILE="maestromodules/tls_config.h"
 

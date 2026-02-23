@@ -124,7 +124,7 @@ Thread_Pool* tp_init(int _max_threads)
 
 int tp_task_add(Thread_Pool* _Pool, TP_Task* _Task)
 {
-  if (!_Pool || !_Task || !_Task->thread_func )
+  if (!_Pool || !_Task || !_Task->thread_func)
     return -1;
 
   /* Make persistent copy of task */
@@ -164,14 +164,12 @@ void tp_wait(Thread_Pool* _Pool)
     pthread_cond_wait(&_Pool->task_finished, &_Pool->mutex);
 
   pthread_mutex_unlock(&_Pool->mutex);
-
 }
 
 void tp_dispose(Thread_Pool* _Pool)
 {
   if (!_Pool || _Pool->stop)
     return;
-
 
   /* Stop running threads gracefully */
   pthread_mutex_lock(&_Pool->mutex);
@@ -191,8 +189,9 @@ void tp_dispose(Thread_Pool* _Pool)
       free(node->item); // free tasks if any still alloc'd
   }
   linked_list_destroy(&_Pool->queue);
-  pthread_mutex_unlock(&_Pool->mutex);
 
+  /* Unlock and destroy primitives */
+  pthread_mutex_unlock(&_Pool->mutex);
   pthread_mutex_destroy(&_Pool->mutex);
   pthread_cond_destroy(&_Pool->task_added);
   pthread_cond_destroy(&_Pool->task_finished);

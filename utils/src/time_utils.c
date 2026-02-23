@@ -97,7 +97,7 @@ time_t parse_iso_full_datetime_string_to_epoch(const char* _time_str)
 }
 
 /* Helper for parsing iso8601 formatted datetime string to time_t epoch
- * Format: "%04d-%02d-%02dT%02d:%02d%c%02d:%02d" */
+ * Format: "%04d-%02d-%02dT%02d:%02d" */
 time_t parse_iso_datetime_string_to_epoch(const char* _time_str)
 {
   struct tm tm = {0};

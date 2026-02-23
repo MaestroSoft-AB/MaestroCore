@@ -1,0 +1,9 @@
+[submodule "test/cmock"]
+	path = test/cmock
+	url = git@github.com:ThrowTheSwitch/CMock.git
+[submodule "external/cjson"]
+	path = external/cjson
+	url = git@github.com:DaveGamble/cJSON.git
+[submodule "external/anonymaestro"]
+	path = external/anonymaestro
+	url = git@github.com:MaestroSoft-AB/AnonyMaestro.git

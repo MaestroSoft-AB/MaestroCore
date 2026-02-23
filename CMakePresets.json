@@ -1,0 +1,117 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build",
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "config-full",
+      "displayName": "Full Configuration (All enabled)",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_UTILS": "ON",
+        "BUILD_MODULES": "ON",
+        "BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "config-utils",
+      "displayName": "Utils Only Configuration",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_UTILS": "ON",
+        "BUILD_MODULES": "OFF",
+        "BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "config-modules",
+      "displayName": "Modules Only Configuration",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_UTILS": "ON",
+        "BUILD_MODULES": "ON",
+        "BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "config-test",
+      "displayName": "Tests Configuration",
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_UTILS": "ON",
+        "BUILD_MODULES": "ON",
+        "BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "config-valgrind",
+      "displayName": "Debug + Valgrind-friendly flags",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_UTILS": "ON",
+        "BUILD_MODULES": "ON",
+        "BUILD_TESTS": "OFF",
+        "VALGRIND_FRIENDLY": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "full",
+      "configurePreset": "config-full",
+      "description": "Builds everything including tests"
+    },
+    {
+      "name": "utils",
+      "configurePreset": "config-utils",
+      "targets": [
+        "maestroutils"
+      ],
+      "description": "Builds only the utility library"
+    },
+    {
+      "name": "modules",
+      "configurePreset": "config-modules",
+      "targets": [
+        "maestromodules"
+      ],
+      "description": "Builds modules and their dependencies"
+    },
+    {
+      "name": "tests",
+      "configurePreset": "config-test",
+      "targets": [
+        "test_suite"
+      ],
+      "description": "Builds and prepares the test suite"
+    },
+    {
+      "name": "valgrind",
+      "configurePreset": "config-valgrind",
+      "description": "Build Debug with Valgrind-friendly flags"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "unit-tests",
+      "configurePreset": "config-test",
+      "description": "Runs the test suite using CTest",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+:cmock:
+  :mock_path: "../../../build/test/mocks"
+  :mock_prefix: "Mock"
+
+  :plugins:
+    - :ignore
+    - :ignore_arg
+    - :expect
+    - :expect_any_args
+    - :callback
+    - :return_thru_ptr
+    - :array
+
+  :verbosity: 1
