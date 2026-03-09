@@ -121,7 +121,7 @@ time_t parse_iso_datetime_string_to_epoch(const char* _time_str)
  * Uses strdup, i.e return value needs to be freed from heap by caller
  * Format: "%04d-%02d-%02dT%02d:%02d" */
 /* WARNING: NOT TESTED, MIGHT BE SHIT */
-const char* parse_epoch_to_iso_full_datetime_string(time_t* _epoch, int _offset_hours)
+char* parse_epoch_to_iso_full_datetime_string(const time_t* _epoch, int _offset_hours)
 {
   struct tm* tm = gmtime(_epoch);
   if (!tm)
@@ -152,7 +152,7 @@ const char* parse_epoch_to_iso_full_datetime_string(time_t* _epoch, int _offset_
 /* Helper for parsing time_t epoch to iso formatted datetime string
  * Uses strdup, i.e return value needs to be freed from heap by caller
  * Format: "%04d-%02d-%02dT%02d:%02d" */
-const char* parse_epoch_to_iso_datetime_string(time_t* _epoch)
+char* parse_epoch_to_iso_datetime_string(const time_t* _epoch)
 {
   struct tm* tm = gmtime(_epoch);
   if (!tm)
@@ -166,6 +166,23 @@ const char* parse_epoch_to_iso_datetime_string(time_t* _epoch)
 
   char iso_string[17];
   if (snprintf(iso_string, 17, "%04d-%02d-%02dT%02d:%02d", year, month, day, hour, min) < 0)
+    return strdup("Invalid datetime");
+
+  return strdup(iso_string);
+}
+
+char* parse_epoch_to_iso_short_datetime_string(const time_t* _epoch)
+{
+  struct tm* tm = gmtime(_epoch);
+  if (!tm)
+    return strdup("Invalid datetime");
+
+  int year = tm->tm_year + 1900;
+  int month = tm->tm_mon + 1;
+  int day = tm->tm_mday;
+
+  char iso_string[11];
+  if (snprintf(iso_string, 11, "%04d-%02d-%02d", year, month, day) < 0)
     return strdup("Invalid datetime");
 
   return strdup(iso_string);
