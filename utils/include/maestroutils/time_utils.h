@@ -49,10 +49,13 @@ time_t parse_iso_datetime_string_to_epoch(const char* _time_str);
  * Uses strdup, i.e return value needs to be freed from heap by caller
  * Format: "%04d-%02d-%02dT%02d:%02d" */
 /* WARNING: NOT TESTED, MIGHT BE SHIT */
-const char* parse_epoch_to_iso_full_datetime_string(time_t* _epoch, int _offset_hours);
+char* parse_epoch_to_iso_full_datetime_string(const time_t* _epoch, int _offset_hours);
 /** Helper for parsing time_t epoch to iso8601 formatted datetime string
  * uses strdup, i.e return value needs to be freed from heap by caller */
-const char* parse_epoch_to_iso_datetime_string(time_t* _epoch);
+char* parse_epoch_to_iso_datetime_string(const time_t* _epoch);
+/** Helper for parsing time_t epoch to iso8601 formatted datetime string
+ * uses strdup, i.e return value needs to be freed from heap by caller */
+char* parse_epoch_to_iso_short_datetime_string(const time_t* _epoch);
 
 
 bool time_is_at_or_after_hour(int _hour);
