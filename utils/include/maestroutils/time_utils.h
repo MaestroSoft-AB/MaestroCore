@@ -62,6 +62,7 @@ time_t epoch_now_day();
 time_t epoch_now_hour();
 time_t epoch_now_min();
 time_t epoch_now_day_utc(void);
+int    epoch_to_utc_date_string(time_t ts, char* out, size_t out_sz);
 /* -------------------------------------------------------- */
 
 #endif

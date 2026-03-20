@@ -229,3 +229,19 @@ time_t epoch_now_day_utc(void)
 
   return timegm(&tm);
 }
+
+int epoch_to_utc_date_string(time_t ts, char* out, size_t out_sz)
+{
+  if (!out || out_sz < 11)
+    return -1;
+
+  struct tm tm_utc;
+
+  if (gmtime_r(&ts, &tm_utc) == NULL)
+    return -1;
+
+  if (strftime(out, out_sz, "%Y-%m-%d", &tm_utc) != 10)
+    return -1;
+
+  return 0;
+}
