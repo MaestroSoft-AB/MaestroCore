@@ -60,8 +60,6 @@ int transport_init(Transport* t, const char* host, const char* port, const char*
   } else {
     return ERR_BAD_FORMAT;
   }
-  printf("transport_init host=%s port=%s scheme=%s use_tls=%d blocking=%d\n", host, port, scheme,
-         t->use_tls, (int)use_blocking);
 
   if (t->use_blocking) {
     res = tcp_client_blocking_init(&t->tcp, t->host, t->port, t->timeout_ms);

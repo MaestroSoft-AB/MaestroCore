@@ -152,20 +152,16 @@ int tls_client_handshake_step(TLS_Client* _tls)
   // if we get here something went wrong
 
   const mbedtls_x509_crt* peer = mbedtls_ssl_get_peer_cert(&_tls->ssl);
-  printf("peer ptr = %p\n", (void*)peer);
   if (peer) {
     char sub[512], iss[512];
     mbedtls_x509_dn_gets(sub, sizeof(sub), &peer->subject);
     mbedtls_x509_dn_gets(iss, sizeof(iss), &peer->issuer);
-    printf("Peer subject: %s\n", sub);
-    printf("Peer issuer : %s\n", iss);
   }
 
   uint32_t flags = mbedtls_ssl_get_verify_result(&_tls->ssl);
   if (flags) {
     char vrfy[1024];
     mbedtls_x509_crt_verify_info(vrfy, sizeof(vrfy), "  ! ", flags);
-    printf("Verify flags:\n%s\n", vrfy);
   }
 
   char errbuf[256];

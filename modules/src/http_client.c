@@ -56,7 +56,6 @@ int http_client_initiate(HTTP_Client* _Client, const char* _URL, HTTPMethod _met
     return ERR_NO_MEMORY;
   }
 
-  printf("Yahoooooooo\n");
   _Client->on_success     = _on_success;
   _Client->resp           = resp;
   _Client->req            = req;
@@ -245,21 +244,11 @@ HTTPClientState http_client_worktask_connecting(HTTP_Client* _Client)
   if (http_parser_url(_Client->URL, (void*)&_Client->url_parts) != SUCCESS) {
     return HTTP_CLIENT_ERROR;
   }
-
-  // printf("Scheme: %s\n", _Client->url_parts.scheme);
-  // printf("Host: %s\n", _Client->url_parts.host);
-  // printf("path: %s\n", _Client->url_parts.path);
-  // printf("PorT: %s\n", _Client->url_parts.port);
-
-  // printf("URL: %s\n", _Client->url_parts.host);
-  // printf("Pprt: %s\n", PORT);
   int result;
 
   if (_Client->blocking_mode) {
-    printf("Attempting to init transport from http_client blocking...\n");
     result = transport_init(&_Client->transport, _Client->url_parts.host, _Client->url_parts.port,
                             _Client->url_parts.scheme, _Client->timeout_ms, true);
-    printf("Result of transport init blocking_mode: %d\n", result);
   } else {
     result = transport_init(&_Client->transport, _Client->url_parts.host, _Client->url_parts.port,
                             _Client->url_parts.scheme, _Client->timeout_ms, false);
@@ -382,9 +371,6 @@ HTTPClientState http_client_worktask_send_request(HTTP_Client* _Client)
   }
 
   if (_Client->bytes_sent == 0) {
-    printf("=== HTTP REQUEST (%d bytes) ===\n", _Client->request_length);
-    printf("%.*s\n", (int)_Client->request_length, _Client->request_buffer);
-    printf("=== END REQUEST ===\n");
     fflush(stdout);
   }
 
@@ -490,11 +476,6 @@ HTTPClientState http_client_worktask_read_firstline(HTTP_Client* _Client)
     /*Add internal error*/
     return HTTP_CLIENT_ERROR;
   }
-
-  // printf("Version: %s\n", _Client->resp->version);
-  // printf("status_code_string: %s\n", _Client->resp->status_code_string);
-  // printf("reason_phrase: %s\n", _Client->resp->reason_phrase);
-  //
   /*We have handled first line + 2 for \r\n*/
   size_t parsed = line_len + 2;
 
@@ -525,9 +506,6 @@ HTTPClientState http_client_worktask_read_headers(HTTP_Client* _Client)
     if (headers_end >= 0) {
       size_t parsed_len = (size_t)headers_end + 4; // inkluderar \r\n\r\n
 
-      printf("=== RAW RESPONSE HEADERS (%zu bytes parsed_len) ===\n", parsed_len);
-      printf("%.*s\n", (int)parsed_len, (char*)_Client->recv_buf->addr);
-      printf("=== END HEADERS ===\n");
       fflush(stdout);
 
       if (http_parser_headers((const char*)_Client->recv_buf->addr, parsed_len,
@@ -666,8 +644,6 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
   char*              endptr = NULL;
   unsigned long long val    = strtoull(line, &endptr, 16);
 
-  printf("CHUNK SIZE parsed: %llu (0x%llx)\n", val, val);
-  printf("recv_buf.size now: %zu\n", _Client->recv_buf->size);
   if (endptr == line) {
     return HTTP_CLIENT_ERROR;
   }
@@ -760,11 +736,6 @@ HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client* _Client)
         // Keep reading
         return HTTP_CLIENT_READING_BODY_CHUNKED;
       }
-      printf("Expected CRLF after chunk, got: %02X %02X (bufsize=%zu)\n",
-             _Client->recv_buf->size >= 1 ? _Client->recv_buf->addr[0] : 0,
-             _Client->recv_buf->size >= 2 ? _Client->recv_buf->addr[1] : 0,
-             _Client->recv_buf->size);
-
       perror("recv chunk-data");
       return HTTP_CLIENT_ERROR;
     }
@@ -896,7 +867,6 @@ HTTPClientState http_client_worktask_returning(HTTP_Client* _Client)
     return HTTP_CLIENT_ERROR;
   }
 
-  printf("Returning codE: %s\n", _Client->resp->status_code_string);
   uint8_t* src     = NULL;
   size_t   src_len = 0;
 
@@ -964,7 +934,6 @@ void http_client_taskwork(void* _context, uint64_t _montime)
 
   static HTTPClientState last = -1;
   if (client->state != last) {
-    printf("HTTP state -> %d\n", client->state);
     last = client->state;
   }
   uint64_t now = SystemMonotonicMS();

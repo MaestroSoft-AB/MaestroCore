@@ -6,7 +6,7 @@
 /* ******************************************************************* */
 
 
-#include "string_utils.h" // uses strdup 
+#include "string_utils.h" // uses strdup
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -16,23 +16,23 @@
 #include <windows.h>
 #endif /*_WIN32*/
 
-#define ISO_DATE_STRING_FULL      "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d"
-#define ISO_DATE_STRING_FULL_LEN  20
-#define ISO_DATE_STRING           "%04d-%02d-%02dT%02d:%02d"
-#define ISO_DATE_STRING_LEN       16
-#define ISO_DATE_STRING_DAY       "%04d-%02d-%02d"
-#define ISO_DATE_STRING_DAY_LEN   10
+#define ISO_DATE_STRING_FULL "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d"
+#define ISO_DATE_STRING_FULL_LEN 20
+#define ISO_DATE_STRING "%04d-%02d-%02dT%02d:%02d"
+#define ISO_DATE_STRING_LEN 16
+#define ISO_DATE_STRING_DAY "%04d-%02d-%02d"
+#define ISO_DATE_STRING_DAY_LEN 10
 
 /* ---------------------- Interface ----------------------- */
 
 /* chatte generated custom timegm for non-posix platforms */
-#ifndef timegm 
+#ifndef timegm
 time_t timegm(struct tm* _tm);
 #endif /* timegm */
 
 void ms_sleep(uint64_t ms);
 
-uint64_t SystemMonotonicMS(); 
+uint64_t SystemMonotonicMS();
 /** Helper for parsing iso8601 formatted datetime string to time_t epoch */
 
 /** Return amount of offset hours local time is from UTC */
@@ -61,7 +61,7 @@ bool time_is_at_or_after_hour(int _hour);
 time_t epoch_now_day();
 time_t epoch_now_hour();
 time_t epoch_now_min();
-
+time_t epoch_now_day_utc(void);
 /* -------------------------------------------------------- */
 
 #endif

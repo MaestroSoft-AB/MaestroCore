@@ -233,7 +233,6 @@ int tcp_client_wait_writable(int _fd, int _timeout_ms)
   } while (res < 0 && errno == EINTR);
 
   if (res == 0) {
-    printf("wait writable res == 0\n");
     return ERR_TIMEOUT;
   }
   if (res < 0) {
