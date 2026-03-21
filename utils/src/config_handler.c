@@ -1,8 +1,10 @@
 #include <maestroutils/config_handler.h>
+#include <maestroutils/string_utils.h>
 
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 static void trim(char* s)
 {
@@ -92,4 +94,68 @@ int config_get_value(const char* config_path,
   }
 
   return 0;
+}
+
+int config_values_get(const char* _config_path,
+                      const char** _keys,
+                      char** _values,
+                      size_t _key_count)
+{
+  if (!_config_path || !_keys || !_values || _key_count == 0)
+    return -1;
+
+  FILE* f = fopen(_config_path, "r");
+  if (!f)
+    return -1;
+
+  // Initialize all output values to NULL
+  for (size_t i = 0; i < _key_count; i++)
+    _values[i] = NULL;
+
+  char line[512];
+  size_t found_count = 0;
+
+  while (fgets(line, sizeof(line), f)) {
+    trim(line);
+
+    // Skip empty or comment lines
+    if (line[0] == '#' || line[0] == '\0')
+      continue;
+
+    char* eq = strchr(line, '=');
+    if (!eq)
+      continue;
+
+    *eq = '\0';
+    char* key = line;
+    char* value = eq + 1;
+
+    trim(key);
+    trim(value);
+    strip_inline_comment(value);
+    trim(value);
+
+    for (size_t i = 0; i < _key_count; i++) {
+      if (_keys[i] && strcmp(_keys[i], key) == 0) {
+        _values[i] = strdup(value);
+        if (_values[i] == NULL)
+          fprintf(stderr, "config_handler -> strdup");
+        if (_values[i])
+          found_count++;
+      }
+    }
+  }
+
+  fclose(f);
+  return (int)found_count;
+}
+
+void config_values_dispose(char** _values, size_t _values_count)
+{
+  if (!_values)
+    return;
+
+  for (size_t i = 0; i < _values_count; i++)
+    if (_values[i] != NULL) free(_values[i]);
+  
 }
