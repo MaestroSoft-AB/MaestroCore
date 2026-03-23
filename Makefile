@@ -47,40 +47,23 @@ CPPFLAGS += -I$(ANONY_INC)
 CFLAGS   += $(CSTD) $(WARNFLAGS) $(OPTFLAGS) -MMD -MP
 CFLAGS   += -DMBEDTLS_USER_CONFIG_FILE=\"maestromodules/tls_config.h\"
 
-# Enable JSON: make JSON=1
-ifeq ($(JSON),1)
-  CPPFLAGS += -I$(CJSON_INC)
-  CFLAGS   += -DMAESTROUTILS_WITH_CJSON
-  WITH_CJSON := 1
-else
-  WITH_CJSON := 0
-endif
+CPPFLAGS += -I$(CJSON_INC)
+CFLAGS   += -DMAESTROUTILS_WITH_CJSON
+WITH_CJSON := 1
 
 # --- Sources ---
 MOD_SRCS := $(wildcard $(MOD_SRC_DIR)/*.c)
 UTL_SRCS_ALL := $(wildcard $(UTL_SRC_DIR)/*.c)
 
-ifeq ($(WITH_CJSON),1)
-  UTL_SRCS := $(UTL_SRCS_ALL)
-else
-  UTL_SRCS := $(filter-out $(UTL_SRC_DIR)/json_utils.c,$(UTL_SRCS_ALL))
-endif
+UTL_SRCS := $(UTL_SRCS_ALL)
 
-ifeq ($(WITH_CJSON),1)
-  CJSON_OBJ := $(OBJ_DIR)/external/cjson.o
-else
-  CJSON_OBJ :=
-endif
+CJSON_OBJ := $(OBJ_DIR)/external/cjson.o
 
 # --- Objects ---
 MOD_OBJS := $(patsubst $(MOD_SRC_DIR)/%.c,$(OBJ_DIR)/modules/%.o,$(MOD_SRCS))
 UTL_OBJS := $(patsubst $(UTL_SRC_DIR)/%.c,$(OBJ_DIR)/utils/%.o,$(UTL_SRCS))
 
-DEPS := $(MOD_OBJS:.o=.d) $(UTL_OBJS:.o=.d)
-
-ifeq ($(WITH_CJSON),1)
-  DEPS += $(CJSON_OBJ:.o=.d)
-endif
+DEPS := $(MOD_OBJS:.o=.d) $(UTL_OBJS:.o=.d) $(CJSON_OBJ:.o=.d)
 
 # --- Libraries ---
 LIB_CORE := $(LIB_DIR)/libmaestrocore.a

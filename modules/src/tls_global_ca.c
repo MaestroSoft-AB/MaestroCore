@@ -25,7 +25,7 @@ int global_tls_ca_init(void)
 
 
   int ret = mbedtls_x509_crt_parse(&g_ca, (const unsigned char*)g_ca_bundle_pem,
-                                   strlen(g_ca_bundle_pem) + 1);
+                                   strlen((const char*)g_ca_bundle_pem) + 1);
 
 
   if (ret != 0) {

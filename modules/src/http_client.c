@@ -477,7 +477,7 @@ HTTPClientState http_client_worktask_read_firstline(HTTP_Client* _Client)
     return HTTP_CLIENT_ERROR;
   }
   /*We have handled first line + 2 for \r\n*/
-  size_t parsed = line_len + 2;
+  ssize_t parsed = line_len + 2;
 
   /*If there is data remaining after first line shift it to beggining of
    * buffer*/
@@ -620,10 +620,10 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
     return HTTP_CLIENT_DECIPHER_CHONKINESS;
   }
 
-  size_t consume_len = (size_t)line_end + 2;
+  ssize_t consume_len = (ssize_t)line_end + 2;
   size_t parse_len   = (size_t)line_end;
 
-  size_t chunk_size;
+  ssize_t chunk_size;
 
   for (size_t i = 0; i < (size_t)line_end; i++) {
     uint8_t ch = _Client->recv_buf->addr[i];
@@ -648,7 +648,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
     return HTTP_CLIENT_ERROR;
   }
 
-  chunk_size = (size_t)val;
+  chunk_size = (ssize_t)val;
 
   if (_Client->recv_buf->size > consume_len) {
     memmove(_Client->recv_buf->addr, _Client->recv_buf->addr + consume_len,
@@ -678,7 +678,7 @@ HTTPClientState http_client_worktask_decipher_chonkiness(HTTP_Client* _Client)
     int traling_end =
         http_parser_find_headers_end(_Client->recv_buf->addr, _Client->recv_buf->size);
     if (traling_end >= 0) {
-      size_t trailers_consume = (size_t)traling_end + 4;
+      ssize_t trailers_consume = (ssize_t)traling_end + 4;
       if (_Client->recv_buf->size > trailers_consume) {
         memmove(_Client->recv_buf->addr, _Client->recv_buf->addr + trailers_consume,
                 _Client->recv_buf->size - trailers_consume);
@@ -727,7 +727,7 @@ HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client* _Client)
 
 
   // Do we need more data?
-  if (_Client->recv_buf->size < (size_t)_Client->chunk_remaining) {
+  if (_Client->recv_buf->size < (ssize_t)_Client->chunk_remaining) {
     uint8_t read_buf[1024];
     int     bytes_read = transport_read(&_Client->transport, read_buf, sizeof(read_buf) - 1);
 
@@ -770,7 +770,7 @@ HTTPClientState http_client_worktask_read_body_chunked(HTTP_Client* _Client)
   _Client->decoded_body[new_len] = '\0';
 
   // Move read data out of tcpbuffer
-  if (_Client->recv_buf->size > (size_t)_Client->chunk_remaining) {
+  if (_Client->recv_buf->size > (ssize_t)_Client->chunk_remaining) {
     memmove(_Client->recv_buf->addr, _Client->recv_buf->addr + _Client->chunk_remaining,
             _Client->recv_buf->size - _Client->chunk_remaining);
   }
@@ -836,7 +836,7 @@ HTTPClientState http_client_worktask_read_body(HTTP_Client* _Client)
     return HTTP_CLIENT_ERROR;
   }
 
-  if (bytes_read == 0 && _Client->recv_buf->size < (size_t)_Client->content_length) {
+  if (bytes_read == 0 && _Client->recv_buf->size < (ssize_t)_Client->content_length) {
     printf("Connection closed before full body was recieved\r\n");
     return HTTP_CLIENT_ERROR;
   }
@@ -852,7 +852,7 @@ HTTPClientState http_client_worktask_read_body(HTTP_Client* _Client)
     }
   }
 
-  if (_Client->recv_buf->size < (size_t)_Client->content_length) {
+  if (_Client->recv_buf->size < (ssize_t)_Client->content_length) {
     /*Keep reading body on next work call*/
     return HTTP_CLIENT_READING_BODY;
   }

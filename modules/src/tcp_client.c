@@ -153,7 +153,7 @@ int tcp_client_blocking_init(TCP_Client* _Client, const char* _host, const char*
     if (cres == 0) {
       // Connected
       last_err = SUCCESS;
-    } else if (cres < 0 && errno == EINPROGRESS || errno == EALREADY) {
+    } else if ((cres < 0 && errno == EINPROGRESS) || errno == EALREADY) {
       // Connecting, wait for writable
       int wr = tcp_client_wait_writable(fd, _timeout_ms);
       if (wr != SUCCESS) {
