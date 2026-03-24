@@ -123,32 +123,30 @@ time_t parse_iso_datetime_string_to_epoch(const char* _time_str)
 /* WARNING: NOT TESTED, MIGHT BE SHIT */
 char* parse_epoch_to_iso_full_datetime_string(const time_t* _epoch, int _offset_hours)
 {
-  struct tm* tm = gmtime(_epoch);
-  if (!tm)
+  if (!_epoch)
     return strdup("Invalid datetime");
 
   if (_offset_hours > 12 || _offset_hours < -12)
     return strdup("Invalid UTC offset");
 
-  int  utc_hour      = _offset_hours;
-  int  utc_sec       = 0;
-  char utc_direction = (utc_hour < 0) ? '-' : '+';
+  time_t adjusted = *_epoch + (_offset_hours * 3600);
 
-  int year  = tm->tm_year + 1900;
-  int month = tm->tm_mon + 1;
-  int day   = tm->tm_mday;
-  int hour  = tm->tm_hour;
-  int min   = tm->tm_min;
-  int sec   = tm->tm_sec;
-
-  char iso_string[26];
-  if (snprintf(iso_string, 26, "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d", year, month, day, hour,
-               min, sec, utc_direction, utc_hour, utc_sec) < 0)
+  struct tm* tm = gmtime(&adjusted);
+  if (!tm)
     return strdup("Invalid datetime");
+
+  int  offset_abs    = (_offset_hours < 0) ? -_offset_hours : _offset_hours;
+  char utc_direction = (_offset_hours < 0) ? '-' : '+';
+
+  char iso_string[32];
+  if (snprintf(iso_string, sizeof(iso_string), "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d",
+               tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec,
+               utc_direction, offset_abs, 0) < 0) {
+    return strdup("Invalid datetime");
+  }
 
   return strdup(iso_string);
 }
-
 /* Helper for parsing time_t epoch to iso formatted datetime string
  * Uses strdup, i.e return value needs to be freed from heap by caller
  * Format: "%04d-%02d-%02dT%02d:%02d" */
@@ -177,9 +175,9 @@ char* parse_epoch_to_iso_short_datetime_string(const time_t* _epoch)
   if (!tm)
     return strdup("Invalid datetime");
 
-  int year = tm->tm_year + 1900;
+  int year  = tm->tm_year + 1900;
   int month = tm->tm_mon + 1;
-  int day = tm->tm_mday;
+  int day   = tm->tm_mday;
 
   char iso_string[11];
   if (snprintf(iso_string, 11, "%04d-%02d-%02d", year, month, day) < 0)
